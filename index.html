@@ -3,10 +3,11 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>مدينة عشق 3D | Aşk City — النسخة الواقعية</title>
+  <title>مدينة عشق 3D | Aşk City — النسخة الواقعية السحابية</title>
   <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&family=Amiri:wght@700&display=swap" rel="stylesheet">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
     :root {
       --bg-black: #080B12;
@@ -239,7 +240,7 @@
       </div>
       <div class="guide-row">
         <div class="guide-num">2</div>
-        <div class="guide-txt"><b>ابنِ بيتك باسمك:</b> تابع <b>@i.askyouu</b> واحصل على فيلا أو قصر أو سيارة رياضية باسمك وعلم بلدك.</div>
+        <div class="guide-txt"><b>ابنِ بيتك السحابي:</b> تابع <b>@i.askyouu</b> واحصل على فيلا أو قصر أو سيارة رياضية يراها جميع المتابعين فوراً.</div>
       </div>
       <div class="guide-row">
         <div class="guide-num">3</div>
@@ -258,7 +259,7 @@
   <div class="brand-pill" onclick="handleSecretTap()">
     <div class="pulse-dot"></div>
     <span class="brand-name">مدينة عشق</span>
-    <span class="stage-chip" id="hud-stage">المرحلة 1</span>
+    <span class="stage-chip" id="hud-houses">0 بيت</span>
   </div>
   <div class="top-tools">
     <button class="hud-circle" onclick="toggleTouchMode()">
@@ -373,7 +374,7 @@
       <option value="#f5efe6">حجر كريمي فاخر</option><option value="#e6ccb2">رملي دافئ</option>
       <option value="#e2e8f0">رخام أبيض</option><option value="#ddb892">طيني معماري</option>
     </select>
-    <button class="btn-electric" onclick="joinCity()">2. استلام هديتي الغامضة وبناء بيتي</button>
+    <button class="btn-electric" id="btn-submit-join" onclick="joinCity()">2. استلام هديتي الغامضة وبناء بيتي</button>
   </div>
 </div>
 
@@ -449,12 +450,17 @@
       </select>
     </div>
     <button class="btn-electric" onclick="adminAdd()">إضافة بيت للمدينة فوراً</button>
-    <div style="font-size:12px; color:var(--beige); margin:10px 0 6px;">المشاركون (<span id="admin-cnt">0</span>):</div>
+    <div style="font-size:12px; color:var(--beige); margin:10px 0 6px;">المشاركون السحابيون (<span id="admin-cnt">0</span>):</div>
     <div id="admin-list"></div>
   </div>
 </div>
 
 <script>
+  // === إعدادات Supabase السحابية للمزامنة الفورية بين جميع الهواتف ===
+  const SUPABASE_URL = "https://dnmscjuzmkuskxadeipd.supabase.co";
+  const SUPABASE_KEY = "sb_publishable_7Cn16nplTiFMCyIcVxElEg_muXd9Bz2";
+  const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
   // === الشفرة السرية للإدارة ===
   const ADMIN_HASH = "QVNLMjAyNg==";
   let adminUnlocked = false, tapCount = 0;
@@ -469,7 +475,7 @@
   }
   if (new URLSearchParams(window.location.search).get('admin') === '1') setTimeout(openAdmin, 700);
 
-  // === توليد خامات PBR واقعية عالية الدقة برمجياً (بدون روابط خارجية) ===
+  // === توليد خامات PBR واقعية عالية الدقة برمجياً ===
   function createGrassTexture() {
     const c = document.createElement('canvas'); c.width = 512; c.height = 512;
     const ctx = c.getContext('2d');
@@ -578,7 +584,6 @@
     showToast(oneFingerPan ? "وضع التحريك بإصبع واحد" : "وضع التدوير 360° بإصبع واحد", "استخدم إصبعين للتكبير والتصغير.");
   }
 
-  // الإضاءة الفيزيائية الواقعية
   const hemiLight = new THREE.HemisphereLight(0xdbeafe, 0x3b5228, 0.85);
   scene.add(hemiLight);
   const sunLight = new THREE.DirectionalLight(0xfff4dc, 1.35);
@@ -611,7 +616,6 @@
 
   // === بناء البيئة الطبيعية الواقعية ===
   function buildRealisticWorld() {
-    // 1. البحر المحيطي
     oceanMesh = new THREE.Mesh(
       new THREE.PlaneGeometry(1000, 1000, 28, 28),
       new THREE.MeshStandardMaterial({ color: 0x165b8c, roughness: 0.14, metalness: 0.55 })
@@ -619,14 +623,12 @@
     oceanMesh.rotation.x = -Math.PI / 2; oceanMesh.position.y = -2.2;
     scene.add(oceanMesh);
 
-    // 2. شاطئ رملي
     const beach = new THREE.Mesh(
       new THREE.BoxGeometry(278, 2.2, 278),
       new THREE.MeshStandardMaterial({ color: 0xe6ccb2, roughness: 0.92 })
     );
     beach.position.y = -1.7; scene.add(beach);
 
-    // 3. أرضية العشب بخامة PBR طبيعية
     const grass = new THREE.Mesh(
       new THREE.BoxGeometry(262, 2.2, 262),
       new THREE.MeshStandardMaterial({ map: createGrassTexture(), roughness: 0.95 })
@@ -634,7 +636,6 @@
     grass.position.y = -1.1; grass.receiveShadow = true;
     scene.add(grass);
 
-    // 4. نجوم السماء (تظهر ليلاً)
     const starGeo = new THREE.BufferGeometry();
     const starPos = [];
     for (let i = 0; i < 600; i++) {
@@ -644,7 +645,6 @@
     starsField = new THREE.Points(starGeo, new THREE.PointsMaterial({ color: 0xffffff, size: 1.4, transparent: true, opacity: 0 }));
     scene.add(starsField);
 
-    // 5. جبال وتلال
     const mtMat = new THREE.MeshStandardMaterial({ color: 0x3b633c, roughness: 0.95 });
     const rockMat = new THREE.MeshStandardMaterial({ color: 0x6b7280, roughness: 0.88 });
     [[-118, -118], [118, -118], [-118, 118], [118, 118], [0, -124], [0, 124], [-124, 0], [124, 0]].forEach(([mx, mz], i) => {
@@ -653,7 +653,6 @@
       mt.position.set(mx, h / 2 - 1, mz); scene.add(mt);
     });
 
-    // 6. شوارع إسفلتية بخامة حقيقية + أرصفة + ممرات مشاة
     const asphaltMat = new THREE.MeshStandardMaterial({ map: createAsphaltTexture(), roughness: 0.85 });
     const sidewalkMat = new THREE.MeshStandardMaterial({ color: 0xd1d5db, roughness: 0.88 });
     const dashMat = new THREE.MeshBasicMaterial({ color: 0xf8fafc });
@@ -678,7 +677,6 @@
       }
     });
 
-    // أعمدة إنارة
     const poleMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, metalness: 0.75 });
     const bulbMat = new THREE.MeshBasicMaterial({ color: 0xfff3c4 });
     [-72, -16, 28, 72].forEach(x => {
@@ -691,7 +689,7 @@
       });
     });
 
-    // 7. قصر العشق المركزي المفصّل (أعمدة، طابقين، شرفات، قبة ذهبية، نافورة)
+    // قصر العشق المركزي
     const plaza = new THREE.Mesh(new THREE.CylinderGeometry(15.2, 16.2, 0.6, 36), new THREE.MeshStandardMaterial({ map: createStoneWallTexture('#f7f2e7'), roughness: 0.5 }));
     plaza.position.y = 0.3; plaza.receiveShadow = true; scene.add(plaza);
 
@@ -714,7 +712,6 @@
     );
     palaceDome.position.y = 9.4; scene.add(palaceDome);
 
-    // أعمدة ومآذن القصر
     [[-5.4, -5.4], [5.4, -5.4], [-5.4, 5.4], [5.4, 5.4]].forEach(([px, pz]) => {
       const col = new THREE.Mesh(new THREE.CylinderGeometry(0.65, 0.78, 8.8, 14), stoneMat);
       col.position.set(px, 5.0, pz); col.castShadow = true;
@@ -735,7 +732,6 @@
       scene.add(sp); clickableObjects.push(sp);
     });
 
-    // أشجار طبيعية متعددة الطبقات
     const trMat = new THREE.MeshStandardMaterial({ color: 0x6b4423, roughness: 0.9 });
     const lf1 = new THREE.MeshStandardMaterial({ color: 0x2d6a4f, roughness: 0.85 });
     const lf2 = new THREE.MeshStandardMaterial({ color: 0x40916c, roughness: 0.85 });
@@ -753,7 +749,6 @@
       tree.position.set(tx, 0, tz); scene.add(tree);
     }
 
-    // نجوم الصيد 3D
     const sMat = new THREE.MeshStandardMaterial({ color: 0x00D4FF, emissive: 0x0088cc, metalness: 0.9 });
     for (let i = 0; i < 12; i++) {
       const s = new THREE.Mesh(new THREE.OctahedronGeometry(1.05), sMat);
@@ -779,22 +774,18 @@
     const w = isPalace ? 6.6 : 5.0, h = isPalace ? 5.6 : 4.0;
     const wallMat = new THREE.MeshStandardMaterial({ map: createStoneWallTexture(citizen.color_hex || '#f5efe6'), roughness: 0.65 });
 
-    // حديقة وسور حجري
     const lawn = new THREE.Mesh(new THREE.BoxGeometry(w + 2.8, 0.28, w + 2.8), new THREE.MeshStandardMaterial({ color: 0x3b633c, roughness: 0.9 }));
     lawn.position.y = 0.14; lawn.receiveShadow = true;
 
-    // الطابق الأول
     const base = new THREE.Mesh(new THREE.BoxGeometry(w, h * 0.62, w), wallMat);
     base.position.y = h * 0.31 + 0.25; base.castShadow = true; base.receiveShadow = true;
 
-    // الطابق الثاني + شرفة أمامية
     const upper = new THREE.Mesh(new THREE.BoxGeometry(w * 0.84, h * 0.45, w * 0.84), wallMat);
     upper.position.set(0, h * 0.84 + 0.25, -w * 0.06); upper.castShadow = true;
 
     const balcony = new THREE.Mesh(new THREE.BoxGeometry(w * 0.88, 0.22, 1.3), new THREE.MeshStandardMaterial({ color: 0xE6D5B8 }));
     balcony.position.set(0, h * 0.64 + 0.25, w * 0.44);
 
-    // سقف قرميدي حقيقي
     const roof = new THREE.Mesh(
       new THREE.ConeGeometry(w * 0.68, isPalace ? 2.6 : 2.1, 4),
       new THREE.MeshStandardMaterial({ color: isPalace ? 0xD4AF37 : 0x8b2626, roughness: 0.48, metalness: isPalace ? 0.7 : 0.1 })
@@ -802,7 +793,6 @@
     roof.position.set(0, h * 1.07 + (isPalace ? 1.45 : 1.2), -w * 0.06);
     roof.rotation.y = Math.PI / 4; roof.castShadow = true;
 
-    // نوافذ زجاجية بإطارات مضيئة وباب خشبي
     const glassMat = new THREE.MeshStandardMaterial({ color: 0xfff3c4, emissive: 0xffd166, emissiveIntensity: 0.45, metalness: 0.8, roughness: 0.1 });
     const w1 = new THREE.Mesh(new THREE.BoxGeometry(1.0, 1.1, 0.16), glassMat);
     w1.position.set(-w / 3.3, h * 0.38 + 0.25, w / 2 + 0.05);
@@ -813,7 +803,6 @@
     const door = new THREE.Mesh(new THREE.BoxGeometry(1.1, 1.9, 0.18), new THREE.MeshStandardMaterial({ color: 0x4a2c18, roughness: 0.7 }));
     door.position.set(0, 1.2, w / 2 + 0.05);
 
-    // سارية وعلم
     const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 2.8), new THREE.MeshStandardMaterial({ color: 0x475569 }));
     pole.position.set(-w / 2.6, h + 1.8, -w / 2.6);
     const flag = createFlag(citizen.flag_emoji);
@@ -828,7 +817,6 @@
     return g;
   }
 
-  // === سيارة رياضية واقعية انسيابية ===
   function createDetailedCar(name, bodyColor = 0xb91c1c) {
     const car = new THREE.Group();
     const paintMat = new THREE.MeshStandardMaterial({ color: bodyColor, metalness: 0.82, roughness: 0.18 });
@@ -879,7 +867,7 @@
     return g;
   }
 
-  // === البيانات المحلية ===
+  // === إدارة البيانات السحابية المشتركة بين جميع الهواتف ===
   const citizensGroup = new THREE.Group();
   scene.add(citizensGroup);
   const plotCoords = [];
@@ -892,28 +880,20 @@
     });
   });
 
-  const defaultCitizens = [
-    { id_num: 1, username: "@i.askyouu", gift_type: "palace", flag_emoji: "❤️", region: "حي البداية", color_hex: "#f5efe6", points: 180, joined: "2026-11-20", unlock_at: new Date(Date.now() - 10000).toISOString() },
-    { id_num: 2, username: "@sara_11", gift_type: "supercar", flag_emoji: "🇾🇪", region: "حي 11:11", color_hex: "#e6ccb2", points: 110, joined: "2026-11-22", unlock_at: new Date(Date.now() - 10000).toISOString() },
-    { id_num: 3, username: "@omar.x", gift_type: "house", flag_emoji: "🇸🇦", region: "حي الأصدقاء", color_hex: "#e2e8f0", points: 85, joined: "2026-11-23", unlock_at: new Date(Date.now() - 10000).toISOString() },
-    { id_num: 4, username: "@noor_ask", gift_type: "palace", flag_emoji: "🇮🇶", region: "حي النخبة", color_hex: "#f5efe6", points: 95, joined: "2026-11-24", unlock_at: new Date(Date.now() - 10000).toISOString() },
-    { id_num: 5, username: "@zain.99", gift_type: "supercar", flag_emoji: "🇪🇬", region: "حي الأصدقاء", color_hex: "#ddb892", points: 75, joined: "2026-11-25", unlock_at: new Date(Date.now() - 10000).toISOString() }
+  const baseCitizens = [
+    { id_num: 1, username: "@i.askyouu", gift_type: "palace", flag_emoji: "❤️", region: "حي البداية", color_hex: "#f5efe6", points: 180, joined: "2026-11-20", unlock_at: new Date(Date.now() - 10000).toISOString() }
   ];
 
-  const defaultWhispers = [
-    { to: "الجميع", msg: "لم يكن هنا شيء.. حتى اجتمعنا في مدينة عشق." },
-    { to: "@i.askyouu", msg: "أجمل عالم واقعي للمتابعين!" }
+  let citizensData = [...baseCitizens];
+  let whispersData = JSON.parse(localStorage.getItem('ask_v6_whispers') || 'null') || [
+    { to: "الجميع", msg: "لم يكن هنا شيء.. حتى اجتمعنا في مدينة عشق." }
   ];
-
-  let citizensData = JSON.parse(localStorage.getItem('ask_v6_citizens') || 'null') || defaultCitizens;
-  let whispersData = JSON.parse(localStorage.getItem('ask_v6_whispers') || 'null') || defaultWhispers;
   let myUser = JSON.parse(localStorage.getItem('ask_v6_me') || 'null');
   let activeProfileUser = myUser || citizensData[0];
   let followed = false, userPositions = {}, aiCars = [], playerCar = null, driveMode = false, carSpeed = 0, flyTarget = null;
   const keys = { up: false, down: false, left: false, right: false };
 
-  function saveLocal() {
-    localStorage.setItem('ask_v6_citizens', JSON.stringify(citizensData));
+  function saveLocalMeta() {
     localStorage.setItem('ask_v6_whispers', JSON.stringify(whispersData));
     localStorage.setItem('ask_v6_stage', String(currentStage));
     localStorage.setItem('ask_v6_poll', JSON.stringify(pollData));
@@ -923,9 +903,11 @@
   function renderCitizens() {
     while (citizensGroup.children.length > 0) citizensGroup.remove(citizensGroup.children[0]);
     aiCars = [];
+    document.getElementById('hud-houses').innerText = `${citizensData.length} بيت`;
     const carColors = [0xb91c1c, 0x0284c7, 0xd97706, 0x1e293b];
 
     citizensData.forEach((c, idx) => {
+      c.id_num = idx + 1;
       const [px, pz] = plotCoords[idx % plotCoords.length];
       userPositions[c.username.toLowerCase()] = [px, pz];
       const locked = new Date(c.unlock_at) > new Date();
@@ -941,10 +923,58 @@
           car.rotation.y = Math.PI / 2;
           citizensGroup.add(car);
           aiCars.push({ mesh: car, dir: 1, speed: 0.25 });
-          if (myUser && c.username === myUser.username) playerCar = car;
+          if (myUser && c.username.toLowerCase() === myUser.username.toLowerCase()) playerCar = car;
         }
       }
     });
+  }
+
+  // === مزامنة Supabase الفورية (قراءة + بث مباشر) ===
+  function mergeCloudRow(row) {
+    if (!row || !row.username || row.username.includes("فهيم")) return;
+    const idx = citizensData.findIndex(c => c.username.toLowerCase() === row.username.toLowerCase());
+    const localExtra = (myUser && myUser.username.toLowerCase() === row.username.toLowerCase()) ? myUser : {};
+    const merged = {
+      id_num: idx === -1 ? citizensData.length + 1 : citizensData[idx].id_num,
+      username: row.username,
+      gift_type: row.gift_type || "house",
+      color_hex: row.color_hex || "#f5efe6",
+      unlock_at: row.unlock_at || new Date(Date.now() - 10000).toISOString(),
+      flag_emoji: row.flag_emoji || localExtra.flag_emoji || "❤️",
+      region: row.region || localExtra.region || "حي البداية",
+      points: row.points || localExtra.points || 30,
+      joined: (row.created_at ? row.created_at.slice(0, 10) : localExtra.joined) || "2026-11-27"
+    };
+    if (idx === -1) citizensData.push(merged);
+    else citizensData[idx] = merged;
+  }
+
+  async function syncFromSupabase() {
+    if (myUser) mergeCloudRow(myUser);
+
+    const { data, error } = await supabaseClient
+      .from('ask_citizens')
+      .select('*')
+      .order('created_at', { ascending: true });
+
+    if (!error && data) {
+      data.forEach(mergeCloudRow);
+    }
+    renderCitizens();
+
+    // الاستماع الفوري لأي بيت جديد يُبنى من أي هاتف آخر في العالم
+    supabaseClient
+      .channel('ask_citizens_realtime_v6')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'ask_citizens' }, payload => {
+        if (payload.eventType === 'DELETE' && payload.old) {
+          citizensData = citizensData.filter(c => c.username !== payload.old.username);
+        } else if (payload.new) {
+          mergeCloudRow(payload.new);
+          showToast("مواطن جديد انضم للمدينة!", `${payload.new.username} بنى بيته الآن.`);
+        }
+        renderCitizens();
+      })
+      .subscribe();
   }
 
   // === التحكم بالكاميرا والنهار/الليل ===
@@ -1023,7 +1053,7 @@
       </div>
       <div class="row2">
         <div class="card-item" style="flex:1; margin:0;"><div class="lbl">الممتلكات</div><div class="val">${gName}</div></div>
-        <div class="card-item" style="flex:1; margin:0;"><div class="lbl">النقاط</div><div class="val">${c.points || 20} نقطة</div></div>
+        <div class="card-item" style="flex:1; margin:0;"><div class="lbl">النقاط</div><div class="val">${c.points || 30} نقطة</div></div>
       </div>
       <div class="card-item" style="margin-top:8px;"><div class="lbl">تاريخ الانضمام</div><div class="val">${c.joined || '2026-11-27'} • شارة مؤسس مدينة عشق</div></div>
     `;
@@ -1056,26 +1086,50 @@
     showToast("تم نسخ رابط موقعك!", "أي شخص يفتح الرابط سيطير مباشرة نحو بيتك.");
   }
 
-  // === الانضمام والهدية ===
-  function joinCity() {
+  // === الانضمام والحفظ السحابي المباشر في Supabase ===
+  async function joinCity() {
     let u = document.getElementById('join-user').value.trim();
     if (!u) return alert("اكتب يوزرك أولاً!");
     if (!u.startsWith('@')) u = '@' + u;
     if (!followed && !confirm("هل قمت بمتابعة حساب @i.askyouu على إنستغرام؟")) return;
 
+    const btn = document.getElementById('btn-submit-join');
+    btn.innerText = "جاري البناء السحابي...";
+    btn.disabled = true;
+
     const gifts = ['house', 'supercar', 'palace'];
     myUser = {
-      id_num: citizensData.length + 1, username: u,
+      id_num: citizensData.length + 1,
+      username: u,
       gift_type: gifts[Math.floor(Math.random() * gifts.length)],
       flag_emoji: document.getElementById('join-flag').value,
       region: document.getElementById('join-region').value,
       color_hex: document.getElementById('join-color').value,
-      points: 30, joined: new Date().toISOString().slice(0, 10),
+      points: 30,
+      joined: new Date().toISOString().slice(0, 10),
       unlock_at: new Date(Date.now() + 5 * 60 * 60 * 1000).toISOString()
     };
-    citizensData.push(myUser); saveLocal();
+
+    // إرسال البيانات للسحابة (Supabase) ليراها الجميع من أي هاتف
+    const { error } = await supabaseClient.from('ask_citizens').upsert([{
+      username: myUser.username,
+      gift_type: myUser.gift_type,
+      color_hex: myUser.color_hex,
+      unlock_at: myUser.unlock_at
+    }], { onConflict: 'username' });
+
+    if (error) console.error("Cloud sync error:", error.message);
+
+    mergeCloudRow(myUser);
+    saveLocalMeta();
     document.getElementById('hud-points').innerText = myUser.points;
-    renderCitizens(); closeModal('join-modal'); startCountdown(myUser.unlock_at); flyToCitizen(u);
+    renderCitizens();
+
+    btn.innerText = "2. استلام هديتي الغامضة وبناء بيتي";
+    btn.disabled = false;
+    closeModal('join-modal');
+    startCountdown(myUser.unlock_at);
+    flyToCitizen(u);
   }
 
   function startCountdown(iso) {
@@ -1090,13 +1144,21 @@
     }, 1000);
   }
 
-  function instantReveal() {
+  async function instantReveal() {
     if (!myUser) return;
     myUser.unlock_at = new Date(Date.now() - 1000).toISOString();
-    const idx = citizensData.findIndex(c => c.username === myUser.username);
-    if (idx !== -1) citizensData[idx] = myUser;
-    saveLocal(); document.getElementById('mystery-bar').style.display = 'none';
-    renderCitizens(); openProfileModal(myUser);
+    await supabaseClient.from('ask_citizens').upsert([{
+      username: myUser.username,
+      gift_type: myUser.gift_type,
+      color_hex: myUser.color_hex,
+      unlock_at: myUser.unlock_at
+    }], { onConflict: 'username' });
+
+    mergeCloudRow(myUser);
+    saveLocalMeta();
+    document.getElementById('mystery-bar').style.display = 'none';
+    renderCitizens();
+    openProfileModal(myUser);
   }
 
   // === الأحياء، الأحداث، الهمسات، الإدارة ===
@@ -1129,7 +1191,7 @@
   function votePoll(id) {
     const item = pollData.find(p => p.id === id); if (!item) return;
     item.votes++; if (palaceDome) palaceDome.material.color.setHex(item.color);
-    saveLocal(); openEventsModal(); showToast("تم تسجيل صوتك!", `تغيّر لون قبة قصر العشق إلى (${item.label}).`);
+    saveLocalMeta(); openEventsModal(); showToast("تم تسجيل صوتك!", `تغيّر لون قبة قصر العشق إلى (${item.label}).`);
   }
   function answerQuiz(ok) {
     closeModal('events-modal');
@@ -1138,27 +1200,32 @@
   }
   function addPoints(n) {
     if (myUser) {
-      myUser.points = (myUser.points || 20) + n;
-      const idx = citizensData.findIndex(c => c.username === myUser.username);
-      if (idx !== -1) citizensData[idx].points = myUser.points;
-      document.getElementById('hud-points').innerText = myUser.points; saveLocal();
+      myUser.points = (myUser.points || 30) + n;
+      mergeCloudRow(myUser);
+      document.getElementById('hud-points').innerText = myUser.points; saveLocalMeta();
     } else document.getElementById('hud-points').innerText = Number(document.getElementById('hud-points').innerText) + n;
   }
 
-  function openMessagesModal() {
+  async function openMessagesModal() {
+    const { data } = await supabaseClient.from('ask_messages').select('*').order('created_at', { ascending: false }).limit(15);
+    if (data && data.length) {
+      whispersData = data.map(r => ({ to: r.to_user, msg: r.message }));
+    }
     document.getElementById('messages-list').innerHTML = whispersData.slice(0, 15).map(w => `
       <div class="card-item"><div class="lbl">إلى: ${w.to}</div><div class="val">${w.msg}</div></div>`).join('');
     openModal('messages-modal');
   }
-  function sendWhisper() {
+  async function sendWhisper() {
     const to = document.getElementById('msg-to').value.trim() || "الجميع";
     const msg = document.getElementById('msg-body').value.trim(); if (!msg) return;
-    whispersData.unshift({ to, msg }); saveLocal(); document.getElementById('msg-body').value = ''; openMessagesModal();
+    await supabaseClient.from('ask_messages').insert([{ to_user: to, message: msg }]);
+    whispersData.unshift({ to, msg }); saveLocalMeta();
+    document.getElementById('msg-body').value = '';
+    openMessagesModal();
   }
 
   function changeWorldStage(st) {
-    currentStage = st; document.getElementById('hud-stage').innerText = `المرحلة ${st}`;
-    saveLocal(); showToast(STAGES[st].name, STAGES[st].desc);
+    currentStage = st; saveLocalMeta(); showToast(STAGES[st].name, STAGES[st].desc);
   }
   function renderAdmin() {
     document.getElementById('admin-stage-sel').value = currentStage;
@@ -1172,19 +1239,24 @@
         </div>
       </div>`).join('');
   }
-  function adminAdd() {
+  async function adminAdd() {
     let u = document.getElementById('admin-u').value.trim(); if (!u) return;
     if (!u.startsWith('@')) u = '@' + u;
-    citizensData.push({ id_num: citizensData.length + 1, username: u, gift_type: document.getElementById('admin-g').value, flag_emoji: '❤️', region: 'حي البداية', color_hex: '#f5efe6', points: 25, joined: new Date().toISOString().slice(0, 10), unlock_at: new Date(Date.now() - 10000).toISOString() });
-    saveLocal(); renderCitizens(); renderAdmin(); document.getElementById('admin-u').value = '';
+    const item = { username: u, gift_type: document.getElementById('admin-g').value, color_hex: '#f5efe6', unlock_at: new Date(Date.now() - 10000).toISOString() };
+    await supabaseClient.from('ask_citizens').upsert([item], { onConflict: 'username' });
+    mergeCloudRow(item); renderCitizens(); renderAdmin(); document.getElementById('admin-u').value = '';
   }
-  function adminUnlock(u) {
-    const f = citizensData.find(c => c.username === u); if (f) f.unlock_at = new Date(Date.now() - 10000).toISOString();
-    saveLocal(); renderCitizens(); renderAdmin();
+  async function adminUnlock(u) {
+    const p = new Date(Date.now() - 10000).toISOString();
+    await supabaseClient.from('ask_citizens').update({ unlock_at: p }).eq('username', u);
+    const f = citizensData.find(c => c.username === u); if (f) f.unlock_at = p;
+    renderCitizens(); renderAdmin();
   }
-  function adminDel(u) {
+  async function adminDel(u) {
     if (!confirm(`حذف ${u}؟`)) return;
-    citizensData = citizensData.filter(c => c.username !== u); saveLocal(); renderCitizens(); renderAdmin();
+    await supabaseClient.from('ask_citizens').delete().eq('username', u);
+    citizensData = citizensData.filter(c => c.username !== u);
+    renderCitizens(); renderAdmin();
   }
 
   // === القيادة والتفاعل ===
@@ -1278,13 +1350,13 @@
     renderer.render(scene, camera);
   }
 
-  document.getElementById('hud-stage').innerText = `المرحلة ${currentStage}`;
+  // === التشغيل ===
   if (myUser) {
-    document.getElementById('hud-points').innerText = myUser.points || 20;
+    document.getElementById('hud-points').innerText = myUser.points || 30;
     if (new Date(myUser.unlock_at) > new Date()) startCountdown(myUser.unlock_at);
   }
   renderRegionsModal();
-  renderCitizens();
+  syncFromSupabase();
   animate();
 
   const sharedUser = new URLSearchParams(window.location.search).get('user');
