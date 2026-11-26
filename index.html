@@ -9,185 +9,215 @@
   <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
   <style>
     :root {
-      --bg-black: #06080D;
-      --panel-bg: rgba(11, 15, 25, 0.88);
+      --bg-black: #080B12;
+      --bg-panel: rgba(8, 11, 18, 0.88);
       --electric: #00D4FF;
+      --electric-glow: rgba(0, 212, 255, 0.32);
       --electric-deep: #0066FF;
       --beige: #E6D5B8;
       --beige-soft: rgba(230, 213, 184, 0.14);
       --border: rgba(0, 212, 255, 0.28);
-      --text-main: #F3F6FA;
+      --text-main: #EAF2FF;
       --text-muted: #94A3B8;
     }
     * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; font-family: 'Cairo', sans-serif; -webkit-tap-highlight-color: transparent; }
-    body { overflow: hidden; background: var(--bg-black); color: var(--text-main); }
+    body { overflow: hidden; background: var(--bg-black); color: var(--text-main); touch-action: none; }
     #canvas-container { position: fixed; inset: 0; z-index: 1; }
 
-    /* شاشة الترحيب والتعليمات الأولى */
-    .welcome-screen {
+    /* ===== شاشة الافتتاح السينمائية (أسود + أزرق كهربائي + بيج) ===== */
+    .intro-screen {
       position: fixed; inset: 0; z-index: 100;
-      background: radial-gradient(circle at top right, rgba(0, 102, 255, 0.22), var(--bg-black) 60%);
+      background: radial-gradient(circle at 20% 15%, rgba(0, 102, 255, 0.22), rgba(8, 11, 18, 0.96) 62%);
       display: flex; align-items: center; justify-content: center; padding: 18px;
-      backdrop-filter: blur(18px); transition: opacity 0.45s ease;
+      backdrop-filter: blur(16px); transition: opacity 0.6s ease;
     }
-    .welcome-card {
-      background: rgba(12, 16, 26, 0.94); border: 1px solid var(--border);
-      border-radius: 28px; max-width: 440px; width: 100%; padding: 28px 22px;
-      box-shadow: 0 25px 70px rgba(0, 0, 0, 0.85), 0 0 40px rgba(0, 212, 255, 0.12);
-      text-align: center;
+    .intro-card {
+      background: rgba(10, 14, 24, 0.94); border: 1px solid var(--border);
+      border-radius: 28px; max-width: 450px; width: 100%; padding: 28px 22px;
+      box-shadow: 0 28px 80px rgba(0, 0, 0, 0.9), 0 0 45px rgba(0, 212, 255, 0.14);
+      text-align: center; position: relative;
     }
-    .welcome-badge {
+    .skip-btn {
+      position: absolute; top: 14px; left: 16px; background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.12); color: var(--text-muted);
+      padding: 4px 12px; border-radius: 20px; font-size: 11px; font-weight: 700; cursor: pointer;
+    }
+    .intro-tag {
       display: inline-block; background: var(--beige-soft); color: var(--beige);
       border: 1px solid rgba(230, 213, 184, 0.35); padding: 4px 14px;
-      border-radius: 30px; font-size: 12px; font-weight: 800; margin-bottom: 12px;
+      border-radius: 30px; font-size: 11.5px; font-weight: 800; margin-bottom: 12px;
     }
-    .welcome-card h1 { font-family: 'Amiri', serif; font-size: 32px; color: #fff; margin-bottom: 6px; }
-    .welcome-card h1 span { color: var(--electric); }
-    .welcome-sub { font-size: 13px; color: var(--text-muted); margin-bottom: 18px; }
+    .intro-card h1 { font-family: 'Amiri', serif; font-size: 33px; color: #fff; line-height: 1.25; margin-bottom: 6px; }
+    .intro-card h1 span { color: var(--electric); }
+    .intro-quote { font-size: 13px; color: var(--beige); margin-bottom: 16px; font-weight: 700; }
 
-    .steps-list { text-align: right; margin-bottom: 22px; display: flex; flex-direction: column; gap: 10px; }
-    .step-item {
-      display: flex; align-items: center; gap: 12px; background: rgba(255,255,255,0.03);
-      border: 1px solid rgba(255,255,255,0.06); padding: 10px 14px; border-radius: 16px;
+    .guide-list { text-align: right; display: flex; flex-direction: column; gap: 9px; margin-bottom: 20px; }
+    .guide-row {
+      display: flex; align-items: center; gap: 11px; background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.06); padding: 9px 13px; border-radius: 15px;
     }
-    .step-num {
-      width: 28px; height: 28px; border-radius: 10px; background: rgba(0, 212, 255, 0.15);
-      color: var(--electric); font-weight: 900; font-size: 13px;
+    .guide-num {
+      width: 26px; height: 26px; border-radius: 9px; background: rgba(0, 212, 255, 0.15);
+      color: var(--electric); font-weight: 900; font-size: 12.5px;
       display: flex; align-items: center; justify-content: center; flex-shrink: 0;
     }
-    .step-text { font-size: 12.5px; color: #E2E8F0; line-height: 1.5; }
-    .step-text b { color: var(--beige); }
+    .guide-txt { font-size: 12px; color: #DCE6F5; line-height: 1.5; }
+    .guide-txt b { color: var(--beige); }
 
-    .btn-enter {
-      width: 100%; padding: 14px; border-radius: 16px; border: none;
-      background: linear-gradient(90deg, var(--electric-deep), var(--electric));
-      color: #04070D; font-size: 15px; font-weight: 900; cursor: pointer;
-      box-shadow: 0 8px 28px rgba(0, 212, 255, 0.35); transition: 0.25s;
-    }
-    .btn-enter:active { transform: scale(0.97); }
-
-    /* الشريط العلوي النظيف */
-    .hud-top {
-      position: fixed; top: 14px; left: 14px; right: 14px; z-index: 15;
-      display: flex; justify-content: space-between; align-items: center; gap: 10px; pointer-events: none;
-    }
-    .brand-box {
-      background: var(--panel-bg); border: 1px solid var(--border);
-      padding: 7px 14px; border-radius: 50px; backdrop-filter: blur(14px);
-      display: flex; align-items: center; gap: 10px; pointer-events: auto; cursor: pointer;
-    }
-    .brand-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--electric); box-shadow: 0 0 10px var(--electric); }
-    .brand-title { font-size: 14px; font-weight: 900; color: #fff; }
-    .brand-count { font-size: 11px; color: var(--beige); background: var(--beige-soft); padding: 2px 9px; border-radius: 20px; font-weight: 700; }
-
-    .top-right-tools { display: flex; gap: 8px; pointer-events: auto; }
-    .icon-circle {
-      width: 40px; height: 40px; border-radius: 50%; background: var(--panel-bg);
-      border: 1px solid var(--border); color: var(--beige); display: flex;
-      align-items: center; justify-content: center; cursor: pointer; backdrop-filter: blur(12px);
-      transition: 0.2s;
-    }
-    .icon-circle:hover, .icon-circle.active { background: var(--electric); color: #04070D; border-color: var(--electric); }
-    .icon-circle svg { width: 19px; height: 19px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
-
-    /* شريط البحث */
-    .search-bar {
-      position: fixed; top: 64px; left: 50%; transform: translateX(-50%); z-index: 14;
-      background: var(--panel-bg); border: 1px solid var(--border); border-radius: 50px;
-      padding: 4px 6px 4px 14px; display: flex; align-items: center; gap: 8px;
-      width: 90%; max-width: 360px; backdrop-filter: blur(12px);
-    }
-    .search-bar input { background: transparent; border: none; outline: none; color: #fff; font-size: 12.5px; flex: 1; text-align: right; }
-    .search-bar button { background: var(--electric); color: #04070D; border: none; padding: 5px 14px; border-radius: 30px; font-size: 11.5px; font-weight: 900; cursor: pointer; }
-
-    /* الشريط السفلي (Dock) */
-    .bottom-dock {
-      position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%); z-index: 18;
-      background: var(--panel-bg); border: 1px solid var(--border); border-radius: 26px;
-      padding: 8px 12px; display: flex; align-items: center; gap: 8px;
-      backdrop-filter: blur(16px); box-shadow: 0 12px 35px rgba(0,0,0,0.7);
-    }
-    .dock-btn {
-      background: transparent; border: none; color: var(--text-muted);
-      display: flex; flex-direction: column; align-items: center; gap: 3px;
-      padding: 6px 12px; border-radius: 18px; cursor: pointer; transition: 0.2s; min-width: 58px;
-    }
-    .dock-btn svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2; }
-    .dock-btn span { font-size: 10.5px; font-weight: 700; }
-    .dock-btn:hover, .dock-btn.active { color: var(--electric); background: rgba(0, 212, 255, 0.1); }
-    .dock-btn.primary { background: linear-gradient(135deg, var(--electric-deep), var(--electric)); color: #04070D; box-shadow: 0 4px 16px rgba(0, 212, 255, 0.35); }
-    .dock-btn.primary span { font-weight: 900; }
-
-    /* شريط الهدية الغامضة */
-    .mystery-pill {
-      position: fixed; bottom: 88px; left: 50%; transform: translateX(-50%); z-index: 16;
-      background: rgba(11, 15, 25, 0.94); border: 1px solid var(--beige); border-radius: 50px;
-      padding: 6px 14px; display: none; align-items: center; gap: 12px;
-      box-shadow: 0 8px 25px rgba(0,0,0,0.6);
-    }
-    .mystery-pill .time { color: var(--electric); font-weight: 900; font-size: 14px; direction: ltr; }
-    .mystery-pill button { background: var(--beige); color: #06080D; border: none; padding: 4px 12px; border-radius: 20px; font-size: 11px; font-weight: 900; cursor: pointer; }
-
-    /* إشعارات الشوارع والنجوم */
-    .toast-box {
-      position: fixed; top: 116px; left: 50%; transform: translateX(-50%); z-index: 25;
-      background: rgba(11, 15, 25, 0.95); border: 1px solid var(--electric); border-radius: 18px;
-      padding: 12px 18px; max-width: 340px; width: 88%; text-align: center; display: none;
-      box-shadow: 0 10px 30px rgba(0, 212, 255, 0.2);
-    }
-    .toast-box h4 { color: var(--electric); font-size: 14px; margin-bottom: 3px; }
-    .toast-box p { color: var(--beige); font-size: 12.5px; }
-
-    /* النوافذ المنبثقة */
-    .modal-overlay {
-      position: fixed; inset: 0; z-index: 60; background: rgba(4, 6, 12, 0.85);
-      backdrop-filter: blur(12px); display: flex; align-items: center; justify-content: center; padding: 16px;
-    }
-    .modal-box {
-      background: #0D121F; border: 1px solid var(--border); border-radius: 24px;
-      max-width: 420px; width: 100%; max-height: 85vh; overflow-y: auto; padding: 24px 20px;
-      box-shadow: 0 24px 60px rgba(0,0,0,0.85); text-align: center;
-    }
-    .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
-    .modal-header h3 { color: var(--beige); font-size: 18px; font-weight: 900; }
-    .close-x { background: rgba(255,255,255,0.07); border: none; color: #fff; width: 32px; height: 32px; border-radius: 50%; cursor: pointer; }
-
-    .input-dark {
-      width: 100%; padding: 11px 14px; border-radius: 14px; border: 1px solid rgba(255,255,255,0.12);
-      background: rgba(255,255,255,0.05); color: #fff; font-size: 13.5px; margin-bottom: 10px; outline: none; text-align: center;
-    }
-    .input-dark:focus { border-color: var(--electric); }
-    .row-2 { display: flex; gap: 8px; margin-bottom: 10px; }
-
+    .intro-actions { display: flex; flex-direction: column; gap: 8px; }
     .btn-electric {
-      width: 100%; padding: 12px; border-radius: 14px; border: none;
+      width: 100%; padding: 13px; border-radius: 15px; border: none;
       background: linear-gradient(90deg, var(--electric-deep), var(--electric));
-      color: #04070D; font-size: 14px; font-weight: 900; cursor: pointer; margin-bottom: 8px;
+      color: #04070D; font-size: 14.5px; font-weight: 900; cursor: pointer;
+      box-shadow: 0 8px 26px var(--electric-glow); transition: 0.2s;
     }
-    .btn-beige {
-      width: 100%; padding: 12px; border-radius: 14px; border: 1px solid var(--beige);
-      background: var(--beige-soft); color: var(--beige); font-size: 13.5px; font-weight: 800; cursor: pointer; margin-bottom: 8px;
+    .btn-electric:active { transform: scale(0.97); }
+    .btn-beige-outline {
+      width: 100%; padding: 11px; border-radius: 15px; border: 1px solid rgba(230, 213, 184, 0.45);
+      background: var(--beige-soft); color: var(--beige); font-size: 13px; font-weight: 800; cursor: pointer;
     }
 
-    .msg-card {
-      background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08);
-      border-radius: 14px; padding: 10px 12px; margin-bottom: 8px; text-align: right;
+    /* ===== الشريط العلوي (HUD) ===== */
+    .hud-top {
+      position: fixed; top: 12px; left: 12px; right: 12px; z-index: 15;
+      display: flex; justify-content: space-between; align-items: center; gap: 8px; pointer-events: none;
     }
-    .msg-card .to { font-size: 11px; color: var(--electric); font-weight: 800; margin-bottom: 3px; }
-    .msg-card .body { font-size: 13px; color: #E2E8F0; line-height: 1.5; }
+    .brand-pill {
+      background: var(--bg-panel); border: 1px solid var(--border);
+      padding: 6px 14px; border-radius: 50px; backdrop-filter: blur(14px);
+      display: flex; align-items: center; gap: 9px; pointer-events: auto; cursor: pointer;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.45);
+    }
+    .pulse-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--electric); box-shadow: 0 0 10px var(--electric); }
+    .brand-name { font-size: 13.5px; font-weight: 900; color: #fff; }
+    .stage-chip { font-size: 10.5px; color: var(--beige); background: var(--beige-soft); padding: 2px 8px; border-radius: 20px; font-weight: 800; }
 
-    /* أزرار القيادة */
+    .top-tools { display: flex; gap: 6px; pointer-events: auto; }
+    .hud-circle {
+      height: 38px; min-width: 38px; padding: 0 10px; border-radius: 30px;
+      background: var(--bg-panel); border: 1px solid var(--border); color: var(--beige);
+      display: flex; align-items: center; justify-content: center; gap: 5px;
+      cursor: pointer; backdrop-filter: blur(12px); font-size: 11.5px; font-weight: 800; transition: 0.2s;
+    }
+    .hud-circle:hover, .hud-circle.active { background: var(--electric); color: #04070D; border-color: var(--electric); }
+    .hud-circle svg { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+
+    /* ===== شريط البحث الذكي + الاقتراحات ===== */
+    .search-wrap {
+      position: fixed; top: 60px; left: 50%; transform: translateX(-50%); z-index: 16;
+      width: 90%; max-width: 370px;
+    }
+    .search-box {
+      background: var(--bg-panel); border: 1px solid var(--border); border-radius: 50px;
+      padding: 4px 6px 4px 14px; display: flex; align-items: center; gap: 8px;
+      backdrop-filter: blur(14px); box-shadow: 0 8px 25px rgba(0,0,0,0.4);
+    }
+    .search-box input { background: transparent; border: none; outline: none; color: #fff; font-size: 12.5px; flex: 1; text-align: right; }
+    .search-box button { background: var(--electric); color: #04070D; border: none; padding: 5px 14px; border-radius: 30px; font-size: 11.5px; font-weight: 900; cursor: pointer; }
+    .search-suggestions {
+      margin-top: 6px; background: rgba(10, 14, 24, 0.96); border: 1px solid var(--border);
+      border-radius: 16px; overflow: hidden; display: none; box-shadow: 0 12px 30px rgba(0,0,0,0.65);
+    }
+    .sugg-item {
+      padding: 9px 14px; font-size: 12.5px; color: #EAF2FF; cursor: pointer;
+      display: flex; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.05);
+    }
+    .sugg-item:hover { background: rgba(0, 212, 255, 0.14); color: var(--electric); }
+
+    /* ===== بوصلة الاتجاهات والتحكم بالكاميرا (يسار الشاشة - مضغوطة وأنيقة) ===== */
+    .compass-dock {
+      position: fixed; left: 12px; top: 116px; z-index: 15;
+      display: flex; flex-direction: column; gap: 5px;
+    }
+    .c-btn {
+      width: 36px; height: 36px; border-radius: 12px; background: var(--bg-panel);
+      border: 1px solid var(--border); color: var(--beige); font-size: 11px; font-weight: 900;
+      display: flex; align-items: center; justify-content: center; cursor: pointer;
+      backdrop-filter: blur(10px); transition: 0.2s;
+    }
+    .c-btn:hover, .c-btn.active { background: var(--electric); color: #04070D; border-color: var(--electric); }
+
+    /* ===== الشريط السفلي الموحد (Dock) ===== */
+    .bottom-dock {
+      position: fixed; bottom: 14px; left: 50%; transform: translateX(-50%); z-index: 18;
+      background: var(--bg-panel); border: 1px solid var(--border); border-radius: 24px;
+      padding: 7px 10px; display: flex; align-items: center; gap: 6px;
+      backdrop-filter: blur(16px); box-shadow: 0 14px 40px rgba(0,0,0,0.75);
+      max-width: 96vw; overflow-x: auto;
+    }
+    .dock-item {
+      background: transparent; border: none; color: var(--text-muted);
+      display: flex; flex-direction: column; align-items: center; gap: 2px;
+      padding: 6px 11px; border-radius: 16px; cursor: pointer; transition: 0.2s; min-width: 54px;
+    }
+    .dock-item svg { width: 19px; height: 19px; fill: none; stroke: currentColor; stroke-width: 2; }
+    .dock-item span { font-size: 10px; font-weight: 800; white-space: nowrap; }
+    .dock-item:hover, .dock-item.active { color: var(--electric); background: rgba(0, 212, 255, 0.12); }
+    .dock-item.main-cta { background: linear-gradient(135deg, var(--electric-deep), var(--electric)); color: #04070D; }
+    .dock-item.main-cta span { font-weight: 900; }
+
+    /* ===== شريط الهدية الغامضة ===== */
+    .mystery-bar {
+      position: fixed; bottom: 84px; left: 50%; transform: translateX(-50%); z-index: 16;
+      background: rgba(8, 11, 18, 0.94); border: 1px solid var(--beige); border-radius: 50px;
+      padding: 5px 14px; display: none; align-items: center; gap: 10px;
+    }
+    .mystery-bar .t { color: var(--electric); font-weight: 900; font-size: 13.5px; direction: ltr; }
+    .mystery-bar button { background: var(--beige); color: #080B12; border: none; padding: 3px 11px; border-radius: 20px; font-size: 11px; font-weight: 900; cursor: pointer; }
+
+    /* ===== إشعارات سينمائية ===== */
+    .toast {
+      position: fixed; top: 112px; left: 50%; transform: translateX(-50%); z-index: 30;
+      background: rgba(8, 11, 18, 0.95); border: 1px solid var(--electric); border-radius: 18px;
+      padding: 11px 18px; max-width: 330px; width: 84%; text-align: center; display: none;
+      box-shadow: 0 12px 32px rgba(0, 212, 255, 0.22);
+    }
+    .toast h4 { color: var(--electric); font-size: 13.5px; margin-bottom: 2px; }
+    .toast p { color: var(--beige); font-size: 12px; line-height: 1.5; }
+
+    /* ===== أزرار القيادة باللمس ===== */
     .drive-pad {
-      position: fixed; bottom: 92px; left: 18px; right: 18px; z-index: 20;
+      position: fixed; bottom: 88px; left: 16px; right: 16px; z-index: 20;
       display: none; justify-content: space-between; pointer-events: none;
     }
-    .pad-side { display: flex; gap: 10px; pointer-events: auto; }
+    .pad-g { display: flex; gap: 10px; pointer-events: auto; }
     .d-btn {
-      width: 54px; height: 54px; border-radius: 50%; background: var(--panel-bg);
-      border: 2px solid var(--electric); color: var(--electric); font-size: 20px; font-weight: 900;
+      width: 52px; height: 52px; border-radius: 50%; background: var(--bg-panel);
+      border: 2px solid var(--electric); color: var(--electric); font-size: 19px; font-weight: 900;
       display: flex; align-items: center; justify-content: center; touch-action: manipulation;
     }
     .d-btn:active { background: var(--electric); color: #04070D; }
+
+    /* ===== النوافذ المنبثقة ===== */
+    .modal-overlay {
+      position: fixed; inset: 0; z-index: 60; background: rgba(4, 7, 13, 0.84);
+      backdrop-filter: blur(12px); display: flex; align-items: center; justify-content: center; padding: 14px;
+    }
+    .modal-box {
+      background: #0C101B; border: 1px solid var(--border); border-radius: 24px;
+      max-width: 430px; width: 100%; max-height: 86vh; overflow-y: auto; padding: 22px 18px;
+      box-shadow: 0 24px 65px rgba(0,0,0,0.9); text-align: center;
+    }
+    .m-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
+    .m-head h3 { color: var(--beige); font-size: 17px; font-weight: 900; }
+    .close-x { background: rgba(255,255,255,0.07); border: none; color: #fff; width: 30px; height: 30px; border-radius: 50%; cursor: pointer; }
+
+    .inp {
+      width: 100%; padding: 10px 13px; border-radius: 13px; border: 1px solid rgba(255,255,255,0.12);
+      background: rgba(255,255,255,0.05); color: #fff; font-size: 13px; margin-bottom: 9px; outline: none; text-align: center;
+    }
+    .inp:focus { border-color: var(--electric); }
+    .row2 { display: flex; gap: 8px; margin-bottom: 9px; }
+
+    .card-item {
+      background: rgba(255,255,255,0.035); border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 14px; padding: 10px 12px; margin-bottom: 8px; text-align: right;
+    }
+    .card-item .lbl { font-size: 11px; color: var(--electric); font-weight: 800; margin-bottom: 3px; }
+    .card-item .val { font-size: 12.5px; color: #E2E8F0; line-height: 1.5; }
+
+    .poll-bar-bg { width: 100%; height: 7px; background: rgba(255,255,255,0.08); border-radius: 10px; overflow: hidden; margin-top: 6px; }
+    .poll-bar-fill { height: 100%; background: linear-gradient(90deg, var(--electric-deep), var(--electric)); transition: width 0.4s ease; }
 
     .hidden { display: none !important; }
   </style>
@@ -196,219 +226,274 @@
 
 <div id="canvas-container"></div>
 
-<!-- 1. شاشة الترحيب والتعليمات الأولى -->
-<div class="welcome-screen" id="welcome-screen">
-  <div class="welcome-card">
-    <div class="welcome-badge">AŞK CITY • @i.askyouu</div>
-    <h1>أهلاً بك في <span>مدينة عشق</span></h1>
-    <p class="welcome-sub">عالم ثلاثي الأبعاد حيّ يجمع متابعي حساب عشق في مدينة واحدة</p>
-    <div class="steps-list">
-      <div class="step-item">
-        <div class="step-num">1</div>
-        <div class="step-text"><b>ابنِ بيتك باسمك:</b> تابع حساب <b>@i.askyouu</b> واستلم صندوق هديتك الغامضة (فيلا، قصر، أو سيارة رياضية) تُكشف بعد 5 ساعات.</div>
+<!-- ===== 1. شاشة الترحيب والتعليمات السينمائية ===== -->
+<div class="intro-screen" id="intro-screen">
+  <div class="intro-card">
+    <button class="skip-btn" onclick="enterWorld()">تخطي</button>
+    <div class="intro-tag">AŞK CITY • @i.askyouu</div>
+    <h1>مدينة <span>عشق</span> 3D</h1>
+    <div class="intro-quote">«لم يكن هنا شيء… حتى وصلت أنت»</div>
+    <div class="guide-list">
+      <div class="guide-row">
+        <div class="guide-num">1</div>
+        <div class="guide-txt"><b>استكشف بحرية:</b> اسحب <b>بإصبع واحد</b> للتحرك والتجول داخل المدينة، وبـ <b>إصبعين</b> للتكبير والتصغير.</div>
       </div>
-      <div class="step-item">
-        <div class="step-num">2</div>
-        <div class="step-text"><b>حي الأصدقاء والدعوة:</b> ادعُ أصدقاءك برابطك الخاص ليصبحوا جيرانك وتكسب نقاطاً تتصدر بها المدينة.</div>
+      <div class="guide-row">
+        <div class="guide-num">2</div>
+        <div class="guide-txt"><b>اترك أثرك:</b> تابع <b>@i.askyouu</b> واحصل على رقم عضوية وبيت باسمك وعلم بلدك + هدية غامضة تُكشف بعد 5 ساعات.</div>
       </div>
-      <div class="step-item">
-        <div class="step-num">3</div>
-        <div class="step-text"><b>تحديات وهمسات مجهولة:</b> تجوّل بسيارتك، اجمع نجوم النيون الزرقاء، وأرسل رسائل مجهولة لسكان المدينة!</div>
+      <div class="guide-row">
+        <div class="guide-num">3</div>
+        <div class="guide-txt"><b>عالم حيّ يتطور:</b> قد سيارتك، صوّت لأحداث المدينة، أرسل همسات مجهولة، وحمّل بطاقة أثرك للستوري!</div>
       </div>
     </div>
-    <button class="btn-enter" onclick="enterCity()">الدخول إلى المدينة</button>
+    <div class="intro-actions">
+      <button class="btn-electric" onclick="enterWorld()">الدخول إلى المدينة</button>
+      <button class="btn-beige-outline" onclick="enterWorld(); openModal('join-modal')">الانضمام وبناء بيتي الآن</button>
+    </div>
   </div>
 </div>
 
-<!-- 2. الشريط العلوي النظيف -->
+<!-- ===== 2. الشريط العلوي (HUD) ===== -->
 <div class="hud-top">
-  <div class="brand-box" onclick="handleSecretTap()">
-    <div class="brand-dot"></div>
-    <span class="brand-title">مدينة عشق</span>
-    <span class="brand-count" id="house-counter">0 بيت</span>
+  <div class="brand-pill" onclick="handleSecretTap()">
+    <div class="pulse-dot"></div>
+    <span class="brand-name">مدينة عشق</span>
+    <span class="stage-chip" id="hud-stage">المرحلة 1</span>
   </div>
-  <div class="top-right-tools">
-    <button class="icon-circle" title="نقاطك" onclick="openModal('challenge-modal')" style="width:auto; padding:0 12px; border-radius:30px; gap:5px; font-size:12px; font-weight:800;">
+  <div class="top-tools">
+    <button class="hud-circle" id="btn-touch-mode" title="تبديل إصبع واحد: تحريك / تدوير" onclick="toggleTouchMode()">
+      <span id="touch-mode-label">تحريك</span>
+    </button>
+    <button class="hud-circle" title="نقاطك" onclick="openModal('events-modal')">
       <svg viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
-      <span id="my-points">0</span>
+      <span id="hud-points">0</span>
     </button>
-    <button class="icon-circle" title="نهار / ليل" onclick="toggleDayNight()">
-      <svg viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+    <button class="hud-circle" title="نهار / ليل" onclick="toggleDayNight()">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/></svg>
     </button>
   </div>
 </div>
 
-<!-- شريط البحث -->
-<div class="search-bar">
-  <input type="text" id="search-input" placeholder="ابحث عن بيتك أو صديقك (@يوزر)..." onkeydown="if(event.key==='Enter') flyToUser()" />
-  <button onclick="flyToUser()">طِر للبيت</button>
+<!-- شريط البحث الذكي ("ابحث عن أثرك") -->
+<div class="search-wrap">
+  <div class="search-box">
+    <input type="text" id="search-input" placeholder="ابحث عن أثرك (@يوزر، رقم، أو حي)..." oninput="onSearchInput()" onkeydown="if(event.key==='Enter') executeSearch()" />
+    <button onclick="executeSearch()">اكتشف</button>
+  </div>
+  <div class="search-suggestions" id="search-suggestions"></div>
 </div>
 
-<!-- إشعار الشوارع والنجوم -->
-<div class="toast-box" id="toast-box">
-  <h4 id="toast-title"></h4>
-  <p id="toast-desc"></p>
+<!-- بوصلة الاتجاهات والتحكم بالكاميرا -->
+<div class="compass-dock">
+  <button class="c-btn" title="شمال" onclick="setCamView('N')">N</button>
+  <button class="c-btn" title="جنوب" onclick="setCamView('S')">S</button>
+  <button class="c-btn" title="شرق" onclick="setCamView('E')">E</button>
+  <button class="c-btn" title="غرب" onclick="setCamView('W')">W</button>
+  <button class="c-btn" title="نظرة علوية" onclick="setCamView('TOP')">علوي</button>
+  <button class="c-btn" title="إعادة الضبط" onclick="setCamView('RESET')">↺</button>
+</div>
+
+<!-- إشعار سينمائي -->
+<div class="toast" id="toast">
+  <h4 id="toast-h"></h4>
+  <p id="toast-p"></p>
 </div>
 
 <!-- شريط الهدية الغامضة -->
-<div class="mystery-pill" id="mystery-pill">
-  <span style="font-size:11.5px; color:var(--beige);">هديتك تُفتح بعد:</span>
-  <span class="time" id="countdown">05:00:00</span>
+<div class="mystery-bar" id="mystery-bar">
+  <span style="font-size:11px; color:var(--beige);">هديتك الغامضة:</span>
+  <span class="t" id="countdown">05:00:00</span>
   <button onclick="instantReveal()">فتح الآن</button>
 </div>
 
 <!-- أزرار القيادة -->
 <div class="drive-pad" id="drive-pad">
-  <div class="pad-side">
+  <div class="pad-g">
     <button class="d-btn" id="btn-right">→</button>
     <button class="d-btn" id="btn-left">←</button>
   </div>
-  <div class="pad-side">
+  <div class="pad-g">
     <button class="d-btn" id="btn-down">↓</button>
     <button class="d-btn" id="btn-up">↑</button>
   </div>
 </div>
 
-<!-- 3. الشريط السفلي الموحد (Dock) -->
+<!-- ===== 3. الشريط السفلي (Dock) ===== -->
 <div class="bottom-dock">
-  <button class="dock-btn" id="dock-drive" onclick="toggleDriveMode()">
+  <button class="dock-item" id="dock-drive" onclick="toggleDriveMode()">
     <svg viewBox="0 0 24 24"><path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 0 0 2 12v4c0 .6.4 1 1 1h2"/><circle cx="7" cy="17" r="2"/><circle cx="17" cy="17" r="2"/></svg>
-    <span>القيادة</span>
+    <span>قيادة</span>
   </button>
-  <button class="dock-btn" onclick="openMessagesModal()">
+  <button class="dock-item" onclick="openModal('regions-modal')">
+    <svg viewBox="0 0 24 24"><polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"/><line x1="8" y1="2" x2="8" y2="18"/><line x1="16" y1="6" x2="16" y2="22"/></svg>
+    <span>الأحياء</span>
+  </button>
+  <button class="dock-item main-cta" onclick="openMyHouseOrJoin()">
+    <svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+    <span>أثري</span>
+  </button>
+  <button class="dock-item" onclick="openMessagesModal()">
     <svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
     <span>همسات</span>
   </button>
-  <button class="dock-btn primary" onclick="openModal('gate-modal')">
-    <svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
-    <span>بيتي</span>
-  </button>
-  <button class="dock-btn" onclick="openFriendsModal()">
-    <svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-    <span>أصدقاء</span>
-  </button>
-  <button class="dock-btn" onclick="openModal('challenge-modal')">
+  <button class="dock-item" onclick="openEventsModal()">
     <svg viewBox="0 0 24 24"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
-    <span>تحديات</span>
+    <span>أحداث</span>
+  </button>
+  <button class="dock-item" onclick="openModal('settings-modal')">
+    <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+    <span>الجودة</span>
   </button>
 </div>
 
-<!-- نافذة بناء البيت والهدية الغامضة -->
-<div class="modal-overlay hidden" id="gate-modal">
+<!-- ===== نافذة الانضمام وبناء البيت ===== -->
+<div class="modal-overlay hidden" id="join-modal">
   <div class="modal-box">
-    <div class="modal-header">
-      <h3>بناء بيتك في مدينة عشق</h3>
-      <button class="close-x" onclick="closeModal('gate-modal')">✕</button>
+    <div class="m-head">
+      <h3>اترك أثرك في مدينة عشق</h3>
+      <button class="close-x" onclick="closeModal('join-modal')">✕</button>
     </div>
-    <p style="font-size:13px; color:var(--text-muted); margin-bottom:14px;">تابع حساب <b style="color:var(--electric);">@i.askyouu</b> أولاً، ثم اختر لون بيتك وعلم بلدك لتستلم هديتك الغامضة!</p>
+    <p style="font-size:12.5px; color:var(--text-muted); margin-bottom:12px;">تابع <b style="color:var(--electric);">@i.askyouu</b> أولاً لتحصل على رقم عضويتك، بيتك بعلم بلدك، وهديتك الغامضة (5 ساعات).</p>
     <a href="https://www.instagram.com/i.askyouu?rpxt=eHNvdzlkZ2g0M2R5" target="_blank" onclick="followed=true" style="text-decoration:none;">
-      <button class="btn-beige">1. متابعة حساب @i.askyouu على إنستغرام</button>
+      <button class="btn-beige-outline" style="margin-bottom:10px;">1. متابعة حساب @i.askyouu على إنستغرام</button>
     </a>
-    <input type="text" id="username-input" class="input-dark" placeholder="اكتب يوزرك (مثال: @sara)..." />
-    <div class="row-2">
-      <select id="flag-select" class="input-dark">
+    <input type="text" id="join-user" class="inp" placeholder="اكتب يوزرك (مثال: @sara)..." />
+    <div class="row2">
+      <select id="join-flag" class="inp" style="margin:0;">
         <option value="🇾🇪">🇾🇪 اليمن</option><option value="🇸🇦">🇸🇦 السعودية</option>
         <option value="🇮🇶">🇮🇶 العراق</option><option value="🇸🇾">🇸🇾 سوريا</option>
         <option value="🇪🇬">🇪🇬 مصر</option><option value="🇯🇴">🇯🇴 الأردن</option>
         <option value="🇵🇸">🇵🇸 فلسطين</option><option value="🇦🇪">🇦🇪 الإمارات</option>
         <option value="🇩🇿">🇩🇿 الجزائر</option><option value="🇲🇦">🇲🇦 المغرب</option>
-        <option value="🇹🇷">🇹🇷 تركيا</option><option value="💙">💙 عشق</option>
+        <option value="🇹🇷">🇹🇷 تركيا</option><option value="❤️">❤️ عشق</option>
       </select>
-      <select id="color-select" class="input-dark">
-        <option value="#E6D5B8">بيج ملكي</option>
-        <option value="#00D4FF">أزرق كهربائي</option>
-        <option value="#1E293B">أوبسيديان داكن</option>
-        <option value="#F8FAFC">أبيض ناصع</option>
+      <select id="join-region" class="inp" style="margin:0;">
+        <option value="حي البداية">حي البداية</option>
+        <option value="حي الأصدقاء">حي الأصدقاء</option>
+        <option value="حي 11:11">حي 11:11</option>
+        <option value="حي النخبة">حي النخبة</option>
       </select>
     </div>
-    <button class="btn-electric" onclick="claimMysteryGift()">2. استلام هديتي الغامضة وبناء بيتي</button>
-    <button class="btn-beige" style="border-color:rgba(255,255,255,0.15); color:#fff; margin-top:4px;" onclick="openStoryCard()">عرض بطاقة الستوري (9:16)</button>
+    <select id="join-color" class="inp">
+      <option value="#f5efe6">لون كريمي معماري</option>
+      <option value="#e2c799">لون رملي دافئ</option>
+      <option value="#d9e4ec">لون أبيض جليدي</option>
+      <option value="#e6b8a2">لون طيني فاخر</option>
+    </select>
+    <button class="btn-electric" onclick="joinCity()">2. استلام هديتي الغامضة وبناء بيتي</button>
   </div>
 </div>
 
-<!-- نافذة الرسائل المجهولة (همسات المدينة) -->
-<div class="modal-overlay hidden" id="messages-modal">
+<!-- ===== نافذة ملف المشارك ومولد بطاقة المشاركة PNG ===== -->
+<div class="modal-overlay hidden" id="profile-modal">
   <div class="modal-box">
-    <div class="modal-header">
-      <h3>همسات المدينة المجهولة</h3>
-      <button class="close-x" onclick="closeModal('messages-modal')">✕</button>
+    <div class="m-head">
+      <h3>ملف المشارك داخل العالم</h3>
+      <button class="close-x" onclick="closeModal('profile-modal')">✕</button>
     </div>
-    <input type="text" id="msg-to" class="input-dark" placeholder="إلى يوزر معين (أو اتركه فارغاً للجميع)..." />
-    <textarea id="msg-body" class="input-dark" rows="2" placeholder="اكتب رسالتك المجهولة هنا بكل سرية..."></textarea>
-    <button class="btn-electric" onclick="sendAnonymousMessage()">إرسال همسة مجهولة</button>
-    <div style="text-align:right; font-size:12px; color:var(--beige); margin:12px 0 8px;">أحدث همسات المدينة:</div>
-    <div id="messages-list"></div>
+    <div id="profile-content"></div>
+    <canvas id="share-canvas" width="540" height="960" style="display:none;"></canvas>
+    <div class="row2" style="margin-top:10px;">
+      <button class="btn-electric" style="margin:0; font-size:12.5px;" onclick="downloadStoryPNG()">تحميل بطاقة الستوري (PNG)</button>
+      <button class="btn-beige-outline" style="margin:0; font-size:12.5px;" onclick="copyProfileLink()">نسخ رابط موقعي</button>
+    </div>
   </div>
 </div>
 
-<!-- نافذة حي الأصدقاء والدعوة -->
-<div class="modal-overlay hidden" id="friends-modal">
+<!-- ===== نافذة الأحياء والمناطق ===== -->
+<div class="modal-overlay hidden" id="regions-modal">
   <div class="modal-box">
-    <div class="modal-header">
-      <h3>حي الأصدقاء والدعوات</h3>
-      <button class="close-x" onclick="closeModal('friends-modal')">✕</button>
+    <div class="m-head">
+      <h3>مناطق وأحياء مدينة عشق</h3>
+      <button class="close-x" onclick="closeModal('regions-modal')">✕</button>
     </div>
-    <p style="font-size:13px; color:var(--text-muted); margin-bottom:14px;">انسخ رابط دعوتك الخاص وأرسله لأصدقائك؛ كل صديق ينضم من رابطك يبني بيته بجوارك وتكسب <b style="color:var(--electric);">+50 نقطة</b>!</p>
-    <input type="text" id="invite-link-box" class="input-dark" readonly style="direction:ltr; color:var(--electric); font-weight:700;" />
-    <button class="btn-electric" onclick="copyInviteLink()">نسخ رابط دعوة الأصدقاء</button>
-    <div style="text-align:right; font-size:12px; color:var(--beige); margin:12px 0 8px;">متصدرين نقاط المدينة:</div>
-    <div id="leaderboard-list"></div>
+    <div id="regions-list"></div>
   </div>
 </div>
 
-<!-- نافذة التحديات والألعاب التفاعلية -->
-<div class="modal-overlay hidden" id="challenge-modal">
+<!-- ===== نافذة الأحداث، المراحل، والتصويت ===== -->
+<div class="modal-overlay hidden" id="events-modal">
   <div class="modal-box">
-    <div class="modal-header">
-      <h3>تحديات مدينة عشق</h3>
-      <button class="close-x" onclick="closeModal('challenge-modal')">✕</button>
+    <div class="m-head">
+      <h3>أحداث المدينة والتصويت</h3>
+      <button class="close-x" onclick="closeModal('events-modal')">✕</button>
     </div>
-    <div class="msg-card" style="border-color:var(--electric);">
-      <div class="to">تحدي 3D: صيد نجوم النيون</div>
-      <div class="body">ابحث عن النجوم الزرقاء المتوهجة في شوارع المدينة واضغط عليها أو مرّ بسيارتك فوقها لجمع النقاط (+15 نقطة لكل نجمة).</div>
+    <div class="card-item" style="border-color:var(--electric);">
+      <div class="lbl" id="ev-stage-title">المرحلة الحالية</div>
+      <div class="val" id="ev-stage-desc"></div>
     </div>
-    <div class="msg-card" style="margin-top:10px;">
-      <div class="to">تحدي 11:11 السريع (+30 نقطة)</div>
-      <div class="body" style="margin-bottom:10px;">ما هو الوقت الذي يشتهر به العشاق لتمني الأمنيات؟</div>
-      <div class="row-2">
-        <button class="btn-beige" style="margin:0;" onclick="answerChallenge(true)">11:11</button>
-        <button class="btn-beige" style="margin:0;" onclick="answerChallenge(false)">03:00</button>
+    <div class="card-item">
+      <div class="lbl">تصويت الجمهور: لون إضاءة قبة قصر العشق القادمة</div>
+      <div id="poll-options" style="margin-top:8px;"></div>
+    </div>
+    <div class="card-item">
+      <div class="lbl">تحدي 11:11 السريع (+30 نقطة)</div>
+      <div class="val" style="margin-bottom:8px;">ما هي الساعة التي يكتب فيها سكان المدينة أمنياتهم؟</div>
+      <div class="row2" style="margin:0;">
+        <button class="btn-beige-outline" style="padding:7px;" onclick="answerQuiz(true)">11:11</button>
+        <button class="btn-beige-outline" style="padding:7px;" onclick="answerQuiz(false)">04:00</button>
       </div>
     </div>
   </div>
 </div>
 
-<!-- بطاقة الستوري (9:16) -->
-<div class="modal-overlay hidden" id="story-modal">
-  <div class="modal-box" style="max-width:340px; background:radial-gradient(circle at top, #0a1f3d, #06080D); border:2px solid var(--electric);">
-    <div style="font-size:11px; color:var(--beige); letter-spacing:2px; margin-bottom:8px;">AŞK CITY • @i.askyouu</div>
-    <h2 id="story-user" style="font-size:26px; color:#fff; margin-bottom:10px;">@user</h2>
-    <div id="story-icon" style="font-size:54px; margin:12px 0;">🏡</div>
-    <p id="story-desc" style="color:var(--beige); font-size:14px; line-height:1.6; margin-bottom:18px;">تم بناء بيتي في مدينة عشق!</p>
-    <div style="font-size:11.5px; color:var(--electric); border-top:1px solid var(--border); padding-top:12px; margin-bottom:14px;">
-      صوّر الشاشة وشاركها في ستوري إنستغرام مع تاق <b>@i.askyouu</b>
+<!-- ===== نافذة الهمسات المجهولة ===== -->
+<div class="modal-overlay hidden" id="messages-modal">
+  <div class="modal-box">
+    <div class="m-head">
+      <h3>همسات المدينة المجهولة</h3>
+      <button class="close-x" onclick="closeModal('messages-modal')">✕</button>
     </div>
-    <button class="btn-electric" onclick="closeModal('story-modal')">إغلاق</button>
+    <input type="text" id="msg-to" class="inp" placeholder="إلى يوزر معين (أو اتركه فارغاً للجميع)..." />
+    <textarea id="msg-body" class="inp" rows="2" placeholder="اكتب همستك المجهولة هنا..."></textarea>
+    <button class="btn-electric" onclick="sendWhisper()">إرسال همسة مجهولة</button>
+    <div id="messages-list" style="margin-top:12px;"></div>
   </div>
 </div>
 
-<!-- لوحة الإدارة السرية -->
+<!-- ===== نافذة إعدادات الجودة والأداء ===== -->
+<div class="modal-overlay hidden" id="settings-modal">
+  <div class="modal-box">
+    <div class="m-head">
+      <h3>إعدادات الجودة والأداء</h3>
+      <button class="close-x" onclick="closeModal('settings-modal')">✕</button>
+    </div>
+    <p style="font-size:12.5px; color:var(--text-muted); margin-bottom:14px;">اختر مستوى الرسوميات المناسب لهاتفك لضمان أعلى سلاسة:</p>
+    <button class="btn-beige-outline" style="margin-bottom:8px;" onclick="setQuality('HIGH')">HIGH QUALITY (دقة فائقة وظلال)</button>
+    <button class="btn-beige-outline" style="margin-bottom:8px;" onclick="setQuality('MEDIUM')">MEDIUM QUALITY (متوازن للهواتف)</button>
+    <button class="btn-beige-outline" onclick="setQuality('LOW')">LOW QUALITY (أقصى سرعة)</button>
+  </div>
+</div>
+
+<!-- ===== لوحة الإدارة السرية ===== -->
 <div class="modal-overlay hidden" id="admin-modal">
   <div class="modal-box" style="text-align:right;">
-    <div class="modal-header">
-      <h3>لوحة الإدارة السرية</h3>
+    <div class="m-head">
+      <h3>لوحة إدارة مدينة عشق</h3>
       <button class="close-x" onclick="closeModal('admin-modal')">✕</button>
     </div>
-    <div class="row-2">
-      <input type="text" id="admin-u" class="input-dark" placeholder="@يوزر المتابع" style="margin:0;" />
-      <select id="admin-g" class="input-dark" style="margin:0; width:120px;">
+    <div class="card-item">
+      <div class="lbl">تغيير مرحلة تطور العالم</div>
+      <select id="admin-stage-sel" class="inp" style="margin:6px 0 0;" onchange="changeWorldStage(Number(this.value))">
+        <option value="0">STAGE 0 — THE BEGINNING</option>
+        <option value="1">STAGE 1 — FIRST CONTACT</option>
+        <option value="2">STAGE 2 — THE AWAKENING</option>
+        <option value="3">STAGE 3 — THE EXPANSION</option>
+        <option value="4">STAGE 4 — THE CIVILIZATION</option>
+        <option value="5">STAGE 5 — THE UNKNOWN</option>
+      </select>
+    </div>
+    <div class="row2">
+      <input type="text" id="admin-u" class="inp" placeholder="@يوزر المتابع" style="margin:0;" />
+      <select id="admin-g" class="inp" style="margin:0; width:115px;">
         <option value="house">فيلا</option>
         <option value="supercar">فيلا+سيارة</option>
         <option value="palace">قصر</option>
       </select>
     </div>
-    <button class="btn-electric" onclick="adminAdd()">إضافة للمدينة فوراً</button>
-    <div style="font-size:12px; color:var(--beige); margin:10px 0 6px;">السكان (<span id="admin-cnt">0</span>):</div>
+    <button class="btn-electric" onclick="adminAdd()">إضافة بيت للمدينة فوراً</button>
+    <div style="font-size:12px; color:var(--beige); margin:10px 0 6px;">إدارة المشاركين (<span id="admin-cnt">0</span>):</div>
     <div id="admin-list"></div>
   </div>
 </div>
@@ -428,233 +513,351 @@
     if (tapCount >= 5) { tapCount = 0; openAdmin(); }
     setTimeout(() => tapCount = 0, 2200);
   }
-  if (new URLSearchParams(window.location.search).get('admin') === '1') setTimeout(openAdmin, 800);
+  if (new URLSearchParams(window.location.search).get('admin') === '1') setTimeout(openAdmin, 700);
 
-  // === وظائف النوافذ ===
-  function enterCity() {
-    const w = document.getElementById('welcome-screen');
-    w.style.opacity = '0';
-    setTimeout(() => w.classList.add('hidden'), 450);
-  }
-  function openModal(id) { document.getElementById(id).classList.remove('hidden'); }
-  function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
-  function showToast(title, desc) {
-    document.getElementById('toast-title').innerText = title;
-    document.getElementById('toast-desc').innerText = desc;
-    const t = document.getElementById('toast-box');
-    t.style.display = 'block';
-    setTimeout(() => t.style.display = 'none', 4000);
-  }
+  // === بيانات المراحل والمناطق ===
+  const STAGES = [
+    { name: "STAGE 0 — البداية", desc: "الجزيرة الهادئة قبل وصول أول السكان." },
+    { name: "STAGE 1 — أول لقاء", desc: "بدأت البيوت الأولى بالظهور حول قصر العشق." },
+    { name: "STAGE 2 — الصحوة", desc: "توهج الشوارع وبدء حركة السيارات والهمسات." },
+    { name: "STAGE 3 — التوسع", desc: "ازدهار الأحياء الأربعة وتزايد الأصدقاء." },
+    { name: "STAGE 4 — الحضارة", desc: "المدينة في قمة ألقها وحيويتها المعمارية." },
+    { name: "STAGE 5 — المجهول", desc: "آفاق جديدة وأسرار لم تُكتشف بعد." }
+  ];
 
-  // === مشهد Three.js (أسود + أزرق كهربائي + بيج) ===
+  const REGIONS = [
+    { name: "حي البداية", en: "THE ORIGIN", desc: "قلب المدينة حيث يقع قصر العشق والنافورة الذهبية.", cam: [38, 32, 38], look: [0, 3, 0] },
+    { name: "حي الأصدقاء", en: "THE HORIZON", desc: "منطقة التوسع وجيران روابط الدعوة.", cam: [-65, 34, -65], look: [-44, 2, -44] },
+    { name: "حي 11:11", en: "THE ARCHIVE", desc: "حي الذكريات، الهمسات المجهولة، وأمنيات الليل.", cam: [65, 34, -65], look: [44, 2, -44] },
+    { name: "حي النخبة", en: "THE UNKNOWN", desc: "أرقى أحياء القصور والسيارات الرياضية والأسرار.", cam: [65, 34, 65], look: [44, 2, 44] }
+  ];
+
+  let currentStage = Number(localStorage.getItem('ask_v5_stage') || 1);
+  let pollData = JSON.parse(localStorage.getItem('ask_v5_poll') || 'null') || [
+    { id: 0, label: "ذهبي ملكي", color: 0xD4AF37, votes: 42 },
+    { id: 1, label: "أزرق كهربائي", color: 0x00D4FF, votes: 35 },
+    { id: 2, label: "زمردي مضيء", color: 0x10B981, votes: 19 }
+  ];
+
+  // === تهيئة مشهد Three.js (بيئة واقعية حقيقية داخل المدينة) ===
   const container = document.getElementById('canvas-container');
   const scene = new THREE.Scene();
-  let isNight = true;
-  scene.background = new THREE.Color(0x06080D);
-  scene.fog = new THREE.FogExp2(0x06080D, 0.0034);
+  let isNight = false;
+  scene.background = new THREE.Color(0x8ecae6);
+  scene.fog = new THREE.FogExp2(0x8ecae6, 0.0024);
 
-  const camera = new THREE.PerspectiveCamera(48, window.innerWidth / window.innerHeight, 0.1, 1000);
-  camera.position.set(66, 56, 66);
+  const camera = new THREE.PerspectiveCamera(46, window.innerWidth / window.innerHeight, 0.5, 900);
+  camera.position.set(110, 85, 110); // يبدأ من بعيد بحركة سينمائية
 
-  const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
+  const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance", preserveDrawingBuffer: true });
   renderer.setSize(window.innerWidth, window.innerHeight);
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
   renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   container.appendChild(renderer.domElement);
 
   const controls = new THREE.OrbitControls(camera, renderer.domElement);
   controls.enableDamping = true;
-  controls.dampingFactor = 0.06;
-  controls.maxPolarAngle = Math.PI / 2.2;
+  controls.dampingFactor = 0.07;
+  controls.screenSpacePanning = false; // حركة أفقية سلسة على أرضية المدينة
+  controls.maxPolarAngle = Math.PI / 2.15;
   controls.minDistance = 14;
-  controls.maxDistance = 185;
-
-  const ambientLight = new THREE.AmbientLight(0xdbeafe, 0.55);
-  scene.add(ambientLight);
-  const dirLight = new THREE.DirectionalLight(0xe6d5b8, 0.95);
-  dirLight.position.set(70, 120, 60);
-  scene.add(dirLight);
-
-  let groundMesh = null, centralRing = null;
-  const clickableObjects = [];
-  const starObjects = [];
-
-  function createSignSprite(text, bg = "rgba(11,15,25,0.92)", fg = "#E6D5B8", border = "#00D4FF") {
-    const canvas = document.createElement('canvas');
-    canvas.width = 360; canvas.height = 86;
-    const ctx = canvas.getContext('2d');
-    ctx.fillStyle = bg;
-    ctx.beginPath(); ctx.roundRect(8, 8, 344, 70, 20); ctx.fill();
-    ctx.strokeStyle = border; ctx.lineWidth = 4; ctx.stroke();
-    ctx.fillStyle = fg; ctx.font = 'bold 25px Cairo, sans-serif'; ctx.textAlign = 'center';
-    ctx.fillText(text, 180, 52);
-    const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(canvas) }));
-    sprite.scale.set(9.5, 2.3, 1);
-    return sprite;
+  controls.maxDistance = 195;
+  // افتراضياً: إصبع واحد للتحرك والاستكشاف، وإصبعان للتكبير والتصغير والتدوير
+  let oneFingerPan = true;
+  function applyTouchControls() {
+    controls.touches = oneFingerPan
+      ? { ONE: THREE.TOUCH.PAN, TWO: THREE.TOUCH.DOLLY_ROTATE }
+      : { ONE: THREE.TOUCH.ROTATE, TWO: THREE.TOUCH.DOLLY_PAN };
+    document.getElementById('touch-mode-label').innerText = oneFingerPan ? "تحريك" : "تدوير";
+  }
+  applyTouchControls();
+  function toggleTouchMode() {
+    oneFingerPan = !oneFingerPan;
+    applyTouchControls();
+    showToast(oneFingerPan ? "وضع التحريك بإصبع واحد" : "وضع التدوير 360° بإصبع واحد", "استخدم إصبعين دائماً للتكبير والتصغير.");
   }
 
-  function buildCityWorld() {
-    groundMesh = new THREE.Mesh(
-      new THREE.BoxGeometry(270, 2, 270),
-      new THREE.MeshStandardMaterial({ color: 0x0b101b, roughness: 0.9 })
+  // الإضاءة الواقعية
+  const hemiLight = new THREE.HemisphereLight(0xffffff, 0x3a5a40, 0.78);
+  scene.add(hemiLight);
+  const sunLight = new THREE.DirectionalLight(0xfff5e0, 1.15);
+  sunLight.position.set(90, 140, 75);
+  sunLight.castShadow = true;
+  sunLight.shadow.mapSize.width = 1024;
+  sunLight.shadow.mapSize.height = 1024;
+  scene.add(sunLight);
+
+  let oceanMesh = null, palaceDome = null, fountainRing = null;
+  const clickableObjects = [], starObjects = [], streetBulbs = [];
+
+  function createSpriteLabel(text, sub = "") {
+    const c = document.createElement('canvas'); c.width = 360; c.height = 92;
+    const ctx = c.getContext('2d');
+    ctx.fillStyle = 'rgba(8, 11, 18, 0.88)';
+    ctx.fillRect(10, 10, 340, 72);
+    ctx.strokeStyle = '#00D4FF'; ctx.lineWidth = 3; ctx.strokeRect(10, 10, 340, 72);
+    ctx.fillStyle = '#E6D5B8'; ctx.font = 'bold 24px Cairo, sans-serif'; ctx.textAlign = 'center';
+    ctx.fillText(text, 180, sub ? 42 : 55);
+    if (sub) { ctx.fillStyle = '#00D4FF'; ctx.font = '16px Cairo, sans-serif'; ctx.fillText(sub, 180, 68); }
+    const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(c) }));
+    sp.scale.set(9.2, 2.35, 1);
+    return sp;
+  }
+
+  // === بناء البيئة الطبيعية الواقعية (بحر + جزيرة خضراء + جبال + شوارع + قصر العشق) ===
+  function buildRealisticWorld() {
+    // 1. المحيط الأزرق المحيط بالجزيرة
+    oceanMesh = new THREE.Mesh(
+      new THREE.PlaneGeometry(900, 900, 24, 24),
+      new THREE.MeshStandardMaterial({ color: 0x1a659e, roughness: 0.2, metalness: 0.45 })
     );
-    groundMesh.position.y = -1;
-    scene.add(groundMesh);
+    oceanMesh.rotation.x = -Math.PI / 2;
+    oceanMesh.position.y = -2.2;
+    scene.add(oceanMesh);
 
-    const roadMat = new THREE.MeshStandardMaterial({ color: 0x131926, roughness: 0.7 });
-    const neonLineMat = new THREE.MeshBasicMaterial({ color: 0x00D4FF });
+    // 2. شاطئ رملي دافئ حول الجزيرة
+    const beach = new THREE.Mesh(
+      new THREE.BoxGeometry(278, 2.2, 278),
+      new THREE.MeshStandardMaterial({ color: 0xe6ccb2, roughness: 0.9 })
+    );
+    beach.position.y = -1.7;
+    scene.add(beach);
+
+    // 3. أرضية الجزيرة الخضراء الواقعية
+    const grass = new THREE.Mesh(
+      new THREE.BoxGeometry(262, 2.2, 262),
+      new THREE.MeshStandardMaterial({ color: 0x4f772d, roughness: 0.92 })
+    );
+    grass.position.y = -1.1;
+    grass.receiveShadow = true;
+    scene.add(grass);
+
+    // 4. جبال وتلال طبيعية على أطراف الجزيرة
+    const mtMat = new THREE.MeshStandardMaterial({ color: 0x386641, roughness: 0.95 });
+    const peakMat = new THREE.MeshStandardMaterial({ color: 0x6c757d, roughness: 0.85 });
+    [[-118, -118], [118, -118], [-118, 118], [118, 118], [0, -124], [0, 124], [-124, 0], [124, 0]].forEach(([mx, mz], i) => {
+      const h = 18 + (i % 3) * 8;
+      const mt = new THREE.Mesh(new THREE.ConeGeometry(22, h, 7), i % 2 === 0 ? mtMat : peakMat);
+      mt.position.set(mx, h / 2 - 1, mz);
+      scene.add(mt);
+    });
+
+    // 5. شوارع إسفلتية حقيقية + أرصفة + خطوط بيضاء + أعمدة إنارة
+    const asphaltMat = new THREE.MeshStandardMaterial({ color: 0x2b2f36, roughness: 0.82 });
+    const sidewalkMat = new THREE.MeshStandardMaterial({ color: 0xcbd5e1, roughness: 0.85 });
+    const dashMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
     const roads = [-66, -22, 22, 66];
-    roads.forEach(r => {
-      const rH = new THREE.Mesh(new THREE.BoxGeometry(270, 0.14, 8), roadMat);
-      rH.position.set(0, 0.05, r); scene.add(rH);
-      const rV = new THREE.Mesh(new THREE.BoxGeometry(8, 0.14, 270), roadMat);
-      rV.position.set(r, 0.05, 0); scene.add(rV);
 
-      for (let d = -120; d <= 120; d += 12) {
-        const dH = new THREE.Mesh(new THREE.BoxGeometry(4, 0.16, 0.25), neonLineMat);
-        dH.position.set(d, 0.07, r); scene.add(dH);
-        const dV = new THREE.Mesh(new THREE.BoxGeometry(0.25, 0.16, 4), neonLineMat);
-        dV.position.set(r, 0.07, d); scene.add(dV);
+    roads.forEach(r => {
+      // رصيف وشارع أفقي
+      const swH = new THREE.Mesh(new THREE.BoxGeometry(258, 0.22, 10.6), sidewalkMat);
+      swH.position.set(0, 0.08, r); scene.add(swH);
+      const rH = new THREE.Mesh(new THREE.BoxGeometry(258, 0.26, 8.2), asphaltMat);
+      rH.position.set(0, 0.1, r); rH.receiveShadow = true; scene.add(rH);
+
+      // رصيف وشارع عمودي
+      const swV = new THREE.Mesh(new THREE.BoxGeometry(10.6, 0.22, 258), sidewalkMat);
+      swV.position.set(r, 0.08, 0); scene.add(swV);
+      const rV = new THREE.Mesh(new THREE.BoxGeometry(8.2, 0.26, 258), asphaltMat);
+      rV.position.set(r, 0.1, 0); rV.receiveShadow = true; scene.add(rV);
+
+      for (let d = -118; d <= 118; d += 10) {
+        const dH = new THREE.Mesh(new THREE.BoxGeometry(4.2, 0.28, 0.3), dashMat);
+        dH.position.set(d, 0.11, r); scene.add(dH);
+        const dV = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.28, 4.2), dashMat);
+        dV.position.set(r, 0.11, d); scene.add(dV);
       }
     });
 
-    const districts = [
-      { name: "حي الأصدقاء", desc: "هنا يجتمع الأصدقاء الذين دخلوا عبر روابط الدعوة.", pos: [-44, 3, -44] },
-      { name: "حي 11:11", desc: "حي الأمنيات السرية والرسائل التي تصل في موعدها.", pos: [44, 3, -44] },
-      { name: "حي الساهرين", desc: "لمن يجدون أنفسهم في هدوء الليل وعبارات عشق.", pos: [-44, 3, 44] },
-      { name: "حي النخبة", desc: "أرقى أحياء المدينة لمتصدري النقاط والقصور.", pos: [44, 3, 44] }
-    ];
-    districts.forEach(d => {
-      const s = createSignSprite(d.name, "rgba(11,15,25,0.92)", "#00D4FF", "#E6D5B8");
-      s.position.set(...d.pos);
-      s.userData = { type: 'district', info: d };
-      scene.add(s);
-      clickableObjects.push(s);
+    // أعمدة إنارة كلاسيكية على الأرصفة
+    const poleMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, metalness: 0.7 });
+    const bulbMat = new THREE.MeshBasicMaterial({ color: 0xffe8a3 });
+    [-72, -16, 28, 72].forEach(x => {
+      [-72, -16, 28, 72].forEach(z => {
+        const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.2, 5.5, 8), poleMat);
+        pole.position.set(x, 2.75, z);
+        const bulb = new THREE.Mesh(new THREE.SphereGeometry(0.42, 8, 8), bulbMat);
+        bulb.position.set(x, 5.7, z);
+        scene.add(pole, bulb);
+        streetBulbs.push(bulb);
+      });
     });
 
-    // المعلم المركزي: قصر العشق
-    const plaza = new THREE.Mesh(new THREE.CylinderGeometry(13.5, 14.5, 0.5, 32), new THREE.MeshStandardMaterial({ color: 0x161e2e }));
-    plaza.position.y = 0.25; scene.add(plaza);
+    // 6. المعلم المركزي: قصر العشق (معماري واقعي فاخر)
+    const plaza = new THREE.Mesh(new THREE.CylinderGeometry(14.5, 15.5, 0.6, 36), new THREE.MeshStandardMaterial({ color: 0xf5efe6, roughness: 0.5 }));
+    plaza.position.y = 0.3; plaza.receiveShadow = true; scene.add(plaza);
 
-    centralRing = new THREE.Mesh(new THREE.TorusGeometry(12.2, 0.25, 12, 48), new THREE.MeshBasicMaterial({ color: 0x00D4FF }));
-    centralRing.rotation.x = Math.PI / 2; centralRing.position.y = 0.55; scene.add(centralRing);
+    const fountainPool = new THREE.Mesh(new THREE.CylinderGeometry(12.2, 12.2, 0.7, 32), new THREE.MeshStandardMaterial({ color: 0x00b4d8, roughness: 0.15, metalness: 0.3 }));
+    fountainPool.position.y = 0.35; scene.add(fountainPool);
 
-    const palace = new THREE.Mesh(new THREE.BoxGeometry(11, 6, 11), new THREE.MeshStandardMaterial({ color: 0xE6D5B8, roughness: 0.4 }));
-    palace.position.y = 3.2; scene.add(palace);
+    fountainRing = new THREE.Mesh(new THREE.TorusGeometry(12.2, 0.32, 12, 48), new THREE.MeshStandardMaterial({ color: 0xD4AF37, metalness: 0.85, roughness: 0.2 }));
+    fountainRing.rotation.x = Math.PI / 2; fountainRing.position.y = 0.75; scene.add(fountainRing);
 
-    const dome = new THREE.Mesh(
-      new THREE.SphereGeometry(4.4, 24, 16, 0, Math.PI * 2, 0, Math.PI / 2),
-      new THREE.MeshStandardMaterial({ color: 0x00D4FF, emissive: 0x004466, metalness: 0.8, roughness: 0.2 })
+    const palaceFloor1 = new THREE.Mesh(new THREE.BoxGeometry(11.5, 5.2, 11.5), new THREE.MeshStandardMaterial({ color: 0xfcf8f0, roughness: 0.5 }));
+    palaceFloor1.position.y = 3.2; palaceFloor1.castShadow = true; scene.add(palaceFloor1);
+
+    const palaceFloor2 = new THREE.Mesh(new THREE.BoxGeometry(8.2, 3.2, 8.2), new THREE.MeshStandardMaterial({ color: 0xf5ebd6, roughness: 0.45 }));
+    palaceFloor2.position.y = 7.4; palaceFloor2.castShadow = true; scene.add(palaceFloor2);
+
+    palaceDome = new THREE.Mesh(
+      new THREE.SphereGeometry(4.2, 28, 18, 0, Math.PI * 2, 0, Math.PI / 2),
+      new THREE.MeshStandardMaterial({ color: 0xD4AF37, metalness: 0.85, roughness: 0.2 })
     );
-    dome.position.y = 6.2; scene.add(dome);
+    palaceDome.position.y = 9.0; scene.add(palaceDome);
 
-    const cSign = createSignSprite("قصر العشق • @i.askyouu", "#06080D", "#E6D5B8", "#00D4FF");
-    cSign.position.set(0, 13, 0); scene.add(cSign);
+    // 4 أعمدة ومآذن ركنية للقصر
+    [[-5.2, -5.2], [5.2, -5.2], [-5.2, 5.2], [5.2, 5.2]].forEach(([px, pz]) => {
+      const col = new THREE.Mesh(new THREE.CylinderGeometry(0.65, 0.78, 8.5, 14), new THREE.MeshStandardMaterial({ color: 0xfcf8f0 }));
+      col.position.set(px, 4.8, pz);
+      const cap = new THREE.Mesh(new THREE.ConeGeometry(0.88, 2.2, 14), new THREE.MeshStandardMaterial({ color: 0xD4AF37, metalness: 0.8 }));
+      cap.position.set(px, 10.1, pz);
+      scene.add(col, cap);
+    });
 
-    // نجوم النيون التفاعلية
-    const starMat = new THREE.MeshStandardMaterial({ color: 0x00D4FF, emissive: 0x00D4FF, metalness: 0.9 });
-    for (let i = 0; i < 14; i++) {
-      const star = new THREE.Mesh(new THREE.OctahedronGeometry(1.1), starMat);
-      const r = roads[i % roads.length];
-      star.position.set((Math.random() - 0.5) * 180, 1.8, r);
-      star.userData = { type: 'star' };
-      scene.add(star);
-      starObjects.push(star);
-      clickableObjects.push(star);
+    const pSign = createSpriteLabel("قصر العشق", "@i.askyouu");
+    pSign.position.set(0, 15.2, 0);
+    pSign.userData = { type: 'region', regionIdx: 0 };
+    scene.add(pSign);
+    clickableObjects.push(pSign);
+
+    // 7. لافتات الأحياء الأربعة
+    REGIONS.slice(1).forEach((reg, idx) => {
+      const sp = createSpriteLabel(reg.name, reg.en);
+      sp.position.set(reg.look[0], 5, reg.look[2]);
+      sp.userData = { type: 'region', regionIdx: idx + 1 };
+      scene.add(sp);
+      clickableObjects.push(sp);
+    });
+
+    // 8. أشجار طبيعية ونخيل
+    const trMat = new THREE.MeshStandardMaterial({ color: 0x6f4e37 });
+    const lfMat = new THREE.MeshStandardMaterial({ color: 0x2d6a4f });
+    const lfMat2 = new THREE.MeshStandardMaterial({ color: 0x40916c });
+    for (let i = 0; i < 70; i++) {
+      const tx = (Math.random() - 0.5) * 230, tz = (Math.random() - 0.5) * 230;
+      if (roads.some(r => Math.abs(tx - r) < 8 || Math.abs(tz - r) < 8) || (Math.abs(tx) < 18 && Math.abs(tz) < 18)) continue;
+      const tree = new THREE.Group();
+      const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.24, 0.38, 2.6, 8), trMat);
+      trunk.position.y = 1.3;
+      const c1 = new THREE.Mesh(new THREE.SphereGeometry(1.7, 10, 10), i % 2 ? lfMat : lfMat2);
+      c1.position.y = 3.4;
+      tree.add(trunk, c1);
+      tree.position.set(tx, 0, tz);
+      scene.add(tree);
+    }
+
+    // 9. نجوم تفاعلية في الشوارع (تحدي الصيد 3D)
+    const starMat = new THREE.MeshStandardMaterial({ color: 0x00D4FF, emissive: 0x0088cc, metalness: 0.9 });
+    for (let i = 0; i < 12; i++) {
+      const s = new THREE.Mesh(new THREE.OctahedronGeometry(1.05), starMat);
+      s.position.set((Math.random() - 0.5) * 185, 1.8, roads[i % roads.length]);
+      s.userData = { type: 'star' };
+      scene.add(s);
+      starObjects.push(s);
+      clickableObjects.push(s);
     }
   }
-  buildCityWorld();
+  buildRealisticWorld();
 
-  function toggleDayNight() {
-    isNight = !isNight;
-    if (isNight) {
-      scene.background = new THREE.Color(0x06080D); scene.fog.color.setHex(0x06080D);
-      groundMesh.material.color.setHex(0x0b101b); ambientLight.intensity = 0.55;
-    } else {
-      scene.background = new THREE.Color(0xE6D5B8); scene.fog.color.setHex(0xE6D5B8);
-      groundMesh.material.color.setHex(0xd8c6a8); ambientLight.intensity = 0.95;
-    }
-  }
-
-  // === مجسمات المباني والسيارات الواقعية ===
+  // === مجسمات البيوت الواقعية + الأعلام + السيارات الرياضية ===
   function createFlag(emoji) {
     const c = document.createElement('canvas'); c.width = 128; c.height = 128;
-    const ctx = c.getContext('2d'); ctx.font = '80px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.fillText(emoji || "💙", 64, 68);
-    const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(c) }));
-    s.scale.set(2.3, 2.3, 1); return s;
+    const ctx = c.getContext('2d'); ctx.font = '78px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(emoji || "❤️", 64, 68);
+    const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(c) }));
+    sp.scale.set(2.2, 2.2, 1); return sp;
   }
 
-  function createRealisticBuilding(citizen) {
+  function createRealisticHouse(citizen) {
     const g = new THREE.Group();
     const isPalace = citizen.gift_type === 'palace';
-    const w = isPalace ? 6.2 : 4.6, h = isPalace ? 5.6 : 3.8;
+    const w = isPalace ? 6.4 : 4.8, h = isPalace ? 5.2 : 3.6;
 
-    const yard = new THREE.Mesh(new THREE.BoxGeometry(w + 2.2, 0.25, w + 2.2), new THREE.MeshStandardMaterial({ color: 0x131b2b }));
-    yard.position.y = 0.12;
+    // حديقة وسور حجري صغير
+    const lawn = new THREE.Mesh(new THREE.BoxGeometry(w + 2.6, 0.25, w + 2.6), new THREE.MeshStandardMaterial({ color: 0x386641 }));
+    lawn.position.y = 0.12;
 
-    const walls = new THREE.Mesh(new THREE.BoxGeometry(w, h, w), new THREE.MeshStandardMaterial({ color: citizen.color_hex || '#E6D5B8', roughness: 0.55 }));
-    walls.position.y = h / 2 + 0.2;
+    // جسم المنزل
+    const walls = new THREE.Mesh(new THREE.BoxGeometry(w, h, w), new THREE.MeshStandardMaterial({ color: citizen.color_hex || '#f5efe6', roughness: 0.65 }));
+    walls.position.y = h / 2 + 0.2; walls.castShadow = true;
 
-    const neonTrim = new THREE.Mesh(new THREE.BoxGeometry(w + 0.25, 0.25, w + 0.25), new THREE.MeshBasicMaterial({ color: 0x00D4FF }));
-    neonTrim.position.y = h + 0.3;
+    // سقف قرميدي حقيقي (أو شرفة ملكية للقصر)
+    const roof = new THREE.Mesh(
+      new THREE.ConeGeometry(w * 0.78, isPalace ? 2.8 : 2.3, 4),
+      new THREE.MeshStandardMaterial({ color: isPalace ? 0xD4AF37 : 0x9b2226, roughness: 0.5 })
+    );
+    roof.position.y = h + (isPalace ? 1.55 : 1.3);
+    roof.rotation.y = Math.PI / 4;
 
-    const winMat = new THREE.MeshBasicMaterial({ color: 0x00D4FF });
-    const w1 = new THREE.Mesh(new THREE.BoxGeometry(0.9, 1.1, 0.15), winMat);
+    // نوافذ دافئة وباب خشبي
+    const winMat = new THREE.MeshBasicMaterial({ color: 0xffe599 });
+    const w1 = new THREE.Mesh(new THREE.BoxGeometry(0.95, 1.05, 0.16), winMat);
     w1.position.set(-w / 3.2, h * 0.6, w / 2 + 0.05);
     const w2 = w1.clone(); w2.position.x = w / 3.2;
 
-    const door = new THREE.Mesh(new THREE.BoxGeometry(1.0, 1.8, 0.18), new THREE.MeshStandardMaterial({ color: 0x0b101b }));
-    door.position.set(0, 1.1, w / 2 + 0.05);
+    const door = new THREE.Mesh(new THREE.BoxGeometry(1.05, 1.85, 0.18), new THREE.MeshStandardMaterial({ color: 0x5c3a21 }));
+    door.position.set(0, 1.12, w / 2 + 0.05);
 
-    const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 2.8), new THREE.MeshStandardMaterial({ color: 0x94A3B8 }));
-    pole.position.set(-w / 3, h + 1.6, -w / 3);
+    // سارية وعلم البلد
+    const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 2.8), new THREE.MeshStandardMaterial({ color: 0x475569 }));
+    pole.position.set(-w / 2.6, h + 1.6, -w / 2.6);
     const flag = createFlag(citizen.flag_emoji);
-    flag.position.set(-w / 3 + 0.9, h + 2.4, -w / 3);
+    flag.position.set(-w / 2.6 + 0.9, h + 2.4, -w / 2.6);
 
-    const label = createSignSprite(citizen.username);
-    label.position.y = h + 3.8;
+    // لافتة الاسم
+    const label = createSpriteLabel(citizen.username, `#${citizen.id_num}`);
+    label.position.y = h + 4.5;
+    label.userData = { type: 'citizen', username: citizen.username };
+    clickableObjects.push(label);
 
-    g.add(yard, walls, neonTrim, w1, w2, door, pole, flag, label);
+    g.add(lawn, walls, roof, w1, w2, door, pole, flag, label);
     return g;
   }
 
-  function createSportsCar(name) {
+  function createRealisticCar(name, bodyColor = 0xb91c1c) {
     const car = new THREE.Group();
-    const body = new THREE.Mesh(new THREE.BoxGeometry(2.3, 0.72, 4.6), new THREE.MeshStandardMaterial({ color: 0x0f172a, metalness: 0.8, roughness: 0.2 }));
-    body.position.y = 0.65;
-    const cabin = new THREE.Mesh(new THREE.BoxGeometry(1.85, 0.62, 2.2), new THREE.MeshStandardMaterial({ color: 0x00D4FF, metalness: 0.9, roughness: 0.1 }));
+    const chassis = new THREE.Mesh(new THREE.BoxGeometry(2.3, 0.72, 4.7), new THREE.MeshStandardMaterial({ color: bodyColor, metalness: 0.72, roughness: 0.22 }));
+    chassis.position.y = 0.65; chassis.castShadow = true;
+    const cabin = new THREE.Mesh(new THREE.BoxGeometry(1.85, 0.62, 2.25), new THREE.MeshStandardMaterial({ color: 0x1e293b, metalness: 0.9, roughness: 0.1 }));
     cabin.position.set(0, 1.25, -0.2);
-    const spoiler = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.12, 0.45), new THREE.MeshStandardMaterial({ color: 0xE6D5B8 }));
-    spoiler.position.set(0, 1.15, -2.1);
-    const underglow = new THREE.Mesh(new THREE.PlaneGeometry(2.4, 4.4), new THREE.MeshBasicMaterial({ color: 0x00D4FF, side: THREE.DoubleSide, transparent: true, opacity: 0.5 }));
-    underglow.rotation.x = Math.PI / 2; underglow.position.y = 0.15;
+    const spoiler = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.1, 0.45), new THREE.MeshStandardMaterial({ color: 0x111827 }));
+    spoiler.position.set(0, 1.12, -2.15);
 
-    const wGeo = new THREE.CylinderGeometry(0.44, 0.44, 0.35, 16);
-    const wMat = new THREE.MeshStandardMaterial({ color: 0x050505 });
-    [[-1.2, 0.44, 1.4], [1.2, 0.44, 1.4], [-1.2, 0.44, -1.4], [1.2, 0.44, -1.4]].forEach(p => {
-      const wh = new THREE.Mesh(wGeo, wMat); wh.rotation.z = Math.PI / 2; wh.position.set(...p); car.add(wh);
+    const wGeo = new THREE.CylinderGeometry(0.45, 0.45, 0.36, 16);
+    const wMat = new THREE.MeshStandardMaterial({ color: 0x111111 });
+    const rimGeo = new THREE.CylinderGeometry(0.24, 0.24, 0.38, 12);
+    const rimMat = new THREE.MeshStandardMaterial({ color: 0xe2e8f0, metalness: 0.9 });
+    [[-1.2, 0.45, 1.4], [1.2, 0.45, 1.4], [-1.2, 0.45, -1.4], [1.2, 0.45, -1.4]].forEach(p => {
+      const wh = new THREE.Mesh(wGeo, wMat); wh.rotation.z = Math.PI / 2; wh.position.set(...p);
+      const rm = new THREE.Mesh(rimGeo, rimMat); rm.rotation.z = Math.PI / 2; rm.position.set(...p);
+      car.add(wh, rm);
     });
 
-    const label = createSignSprite(name, "#06080D", "#00D4FF", "#E6D5B8");
-    label.scale.set(7.5, 1.8, 1); label.position.y = 3.0;
-    car.add(body, cabin, spoiler, underglow, label);
+    const hl1 = new THREE.Mesh(new THREE.BoxGeometry(0.45, 0.2, 0.1), new THREE.MeshBasicMaterial({ color: 0xffffff }));
+    hl1.position.set(-0.75, 0.72, 2.36); const hl2 = hl1.clone(); hl2.position.x = 0.75;
+    const tl1 = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.2, 0.1), new THREE.MeshBasicMaterial({ color: 0xff1e42 }));
+    tl1.position.set(-0.75, 0.72, -2.36); const tl2 = tl1.clone(); tl2.position.x = 0.75;
+
+    const lbl = createSpriteLabel(`🏎️ ${name}`);
+    lbl.scale.set(7.2, 1.75, 1); lbl.position.y = 3.0;
+    car.add(chassis, cabin, spoiler, hl1, hl2, tl1, tl2, lbl);
     return car;
   }
 
   function createMysteryBox(citizen) {
     const g = new THREE.Group();
-    const box = new THREE.Mesh(new THREE.BoxGeometry(3.5, 3.5, 3.5), new THREE.MeshStandardMaterial({ color: 0x0f172a, metalness: 0.7 }));
-    box.position.y = 1.8;
-    const rib = new THREE.Mesh(new THREE.BoxGeometry(3.7, 0.55, 3.7), new THREE.MeshBasicMaterial({ color: 0x00D4FF }));
-    rib.position.y = 1.8;
-    const label = createSignSprite(`${citizen.username} (5 ساعات)`);
-    label.position.y = 5.0;
-    g.add(box, rib, label);
+    const box = new THREE.Mesh(new THREE.BoxGeometry(3.6, 3.6, 3.6), new THREE.MeshStandardMaterial({ color: 0x0f172a, metalness: 0.6 }));
+    box.position.y = 1.9;
+    const rib = new THREE.Mesh(new THREE.BoxGeometry(3.8, 0.55, 3.8), new THREE.MeshBasicMaterial({ color: 0x00D4FF }));
+    rib.position.y = 1.9;
+    const lbl = createSpriteLabel(citizen.username, "🎁 5 ساعات");
+    lbl.position.y = 5.2;
+    g.add(box, rib, lbl);
     return g;
   }
 
-  // === البيانات المحلية (تعمل بدون قاعدة بيانات) ===
+  // === إدارة البيانات المحلية ===
   const citizensGroup = new THREE.Group();
   scene.add(citizensGroup);
   const plotCoords = [];
@@ -668,37 +871,37 @@
   });
 
   const defaultCitizens = [
-    { username: "@i.askyouu", gift_type: "palace", flag_emoji: "💙", color_hex: "#E6D5B8", points: 150, unlock_at: new Date(Date.now() - 10000).toISOString() },
-    { username: "@sara_11", gift_type: "supercar", flag_emoji: "🇾🇪", color_hex: "#00D4FF", points: 95, unlock_at: new Date(Date.now() - 10000).toISOString() },
-    { username: "@omar.x", gift_type: "house", flag_emoji: "🇸🇦", color_hex: "#E6D5B8", points: 70, unlock_at: new Date(Date.now() - 10000).toISOString() },
-    { username: "@noor_ask", gift_type: "palace", flag_emoji: "🇮🇶", color_hex: "#F8FAFC", points: 85, unlock_at: new Date(Date.now() - 10000).toISOString() },
-    { username: "@zain.99", gift_type: "supercar", flag_emoji: "🇪🇬", color_hex: "#1E293B", points: 60, unlock_at: new Date(Date.now() - 10000).toISOString() }
+    { id_num: 1, username: "@i.askyouu", gift_type: "palace", flag_emoji: "❤️", region: "حي البداية", color_hex: "#f5efe6", points: 180, joined: "2026-11-20", unlock_at: new Date(Date.now() - 10000).toISOString() },
+    { id_num: 2, username: "@sara_11", gift_type: "supercar", flag_emoji: "🇾🇪", region: "حي 11:11", color_hex: "#e2c799", points: 110, joined: "2026-11-22", unlock_at: new Date(Date.now() - 10000).toISOString() },
+    { id_num: 3, username: "@omar.x", gift_type: "house", flag_emoji: "🇸🇦", region: "حي الأصدقاء", color_hex: "#d9e4ec", points: 85, joined: "2026-11-23", unlock_at: new Date(Date.now() - 10000).toISOString() },
+    { id_num: 4, username: "@noor_ask", gift_type: "palace", flag_emoji: "🇮🇶", region: "حي النخبة", color_hex: "#f5efe6", points: 95, joined: "2026-11-24", unlock_at: new Date(Date.now() - 10000).toISOString() },
+    { id_num: 5, username: "@zain.99", gift_type: "supercar", flag_emoji: "🇪🇬", region: "حي الأصدقاء", color_hex: "#e6b8a2", points: 75, joined: "2026-11-25", unlock_at: new Date(Date.now() - 10000).toISOString() }
   ];
 
-  const defaultMessages = [
-    { to_user: "الجميع", message: "أهلاً بكم في مدينة عشق.. هنا نلتقي بالمعنى والذوق 💙" },
-    { to_user: "@i.askyouu", message: "أجمل فكرة وحساب في إنستغرام، استمروا!" }
+  const defaultWhispers = [
+    { to: "الجميع", msg: "لم يكن هنا شيء.. حتى اجتمعنا في مدينة عشق." },
+    { to: "@i.askyouu", msg: "أجمل عالم تفاعلي للمتابعين!" }
   ];
 
-  let citizensData = JSON.parse(localStorage.getItem('ask_local_citizens') || 'null') || defaultCitizens;
-  let messagesData = JSON.parse(localStorage.getItem('ask_local_messages') || 'null') || defaultMessages;
-  let myGiftData = JSON.parse(localStorage.getItem('ask_local_my_gift') || 'null');
-  let myPoints = myGiftData ? (myGiftData.points || 20) : 0;
-  let followed = false;
-
-  let userPositions = {}, aiCars = [], playerCar = null, driveMode = false, carSpeed = 0, flyTarget = null;
+  let citizensData = JSON.parse(localStorage.getItem('ask_v5_citizens') || 'null') || defaultCitizens;
+  let whispersData = JSON.parse(localStorage.getItem('ask_v5_whispers') || 'null') || defaultWhispers;
+  let myUser = JSON.parse(localStorage.getItem('ask_v5_me') || 'null');
+  let activeProfileUser = myUser || citizensData[0];
+  let followed = false, userPositions = {}, aiCars = [], playerCar = null, driveMode = false, carSpeed = 0, flyTarget = null;
   const keys = { up: false, down: false, left: false, right: false };
 
-  function saveAllLocal() {
-    localStorage.setItem('ask_local_citizens', JSON.stringify(citizensData));
-    localStorage.setItem('ask_local_messages', JSON.stringify(messagesData));
-    if (myGiftData) localStorage.setItem('ask_local_my_gift', JSON.stringify(myGiftData));
+  function saveLocal() {
+    localStorage.setItem('ask_v5_citizens', JSON.stringify(citizensData));
+    localStorage.setItem('ask_v5_whispers', JSON.stringify(whispersData));
+    localStorage.setItem('ask_v5_stage', String(currentStage));
+    localStorage.setItem('ask_v5_poll', JSON.stringify(pollData));
+    if (myUser) localStorage.setItem('ask_v5_me', JSON.stringify(myUser));
   }
 
   function renderCitizens() {
     while (citizensGroup.children.length > 0) citizensGroup.remove(citizensGroup.children[0]);
     aiCars = [];
-    document.getElementById('house-counter').innerText = `${citizensData.length} بيت`;
+    const carColors = [0xb91c1c, 0x0284c7, 0xd97706, 0x0f172a];
 
     citizensData.forEach((c, idx) => {
       const [px, pz] = plotCoords[idx % plotCoords.length];
@@ -708,64 +911,185 @@
       if (locked) {
         const mb = createMysteryBox(c); mb.position.set(px, 0, pz); citizensGroup.add(mb);
       } else {
-        const b = createRealisticBuilding(c); b.position.set(px, 0, pz); citizensGroup.add(b);
+        const h = createRealisticHouse(c); h.position.set(px, 0, pz); citizensGroup.add(h);
         if (c.gift_type === 'supercar') {
-          const car = createSportsCar(c.username);
+          const car = createRealisticCar(c.username, carColors[idx % carColors.length]);
           const rz = [-66, -22, 22, 66][idx % 4];
-          car.position.set(-40 + (idx * 17) % 80, 0, rz);
+          car.position.set(-40 + (idx * 19) % 80, 0.15, rz);
           car.rotation.y = Math.PI / 2;
           citizensGroup.add(car);
-          aiCars.push({ mesh: car, dir: 1, speed: 0.25 });
-          if (myGiftData && c.username === myGiftData.username) playerCar = car;
+          aiCars.push({ mesh: car, dir: 1, speed: 0.24 });
+          if (myUser && c.username === myUser.username) playerCar = car;
         }
       }
     });
   }
 
-  function flyToUser() {
-    const q = document.getElementById('search-input').value.trim().toLowerCase();
-    if (!q) return;
-    const key = Object.keys(userPositions).find(k => k.includes(q));
-    if (!key) return showToast("غير موجود بعد", "اضغط على (بيتي) في الأسفل لبناء بيتك فوراً!");
-    const [tx, tz] = userPositions[key];
-    flyTarget = { cam: new THREE.Vector3(tx + 15, 14, tz + 15), look: new THREE.Vector3(tx, 2, tz) };
+  // === التحكم بالكاميرا والاتجاهات ===
+  function enterWorld() {
+    const s = document.getElementById('intro-screen');
+    s.style.opacity = '0';
+    setTimeout(() => s.classList.add('hidden'), 500);
+    setCamView('RESET');
   }
 
-  // === استلام الهدية الغامضة ===
-  function claimMysteryGift() {
-    let u = document.getElementById('username-input').value.trim();
+  function setCamView(dir) {
+    const map = {
+      N: { cam: [0, 52, -98], look: [0, 2, 0] },
+      S: { cam: [0, 52, 98], look: [0, 2, 0] },
+      E: { cam: [98, 52, 0], look: [0, 2, 0] },
+      W: { cam: [-98, 52, 0], look: [0, 2, 0] },
+      TOP: { cam: [0, 145, 5], look: [0, 0, 0] },
+      RESET: { cam: [64, 52, 64], look: [0, 2, 0] }
+    };
+    const v = map[dir] || map.RESET;
+    flyTarget = { cam: new THREE.Vector3(...v.cam), look: new THREE.Vector3(...v.look) };
+  }
+
+  function toggleDayNight() {
+    isNight = !isNight;
+    if (isNight) {
+      scene.background = new THREE.Color(0x0b132b); scene.fog.color.setHex(0x0b132b);
+      hemiLight.intensity = 0.35; sunLight.intensity = 0.45;
+    } else {
+      scene.background = new THREE.Color(0x8ecae6); scene.fog.color.setHex(0x8ecae6);
+      hemiLight.intensity = 0.78; sunLight.intensity = 1.15;
+    }
+  }
+
+  function setQuality(q) {
+    if (q === 'HIGH') { renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2)); renderer.shadowMap.enabled = true; }
+    else if (q === 'MEDIUM') { renderer.setPixelRatio(1.25); renderer.shadowMap.enabled = true; }
+    else { renderer.setPixelRatio(0.9); renderer.shadowMap.enabled = false; }
+    closeModal('settings-modal');
+    showToast("تم ضبط الجودة", `المستوى الحالي: ${q}`);
+  }
+
+  // === البحث الذكي وملف المشارك ===
+  function onSearchInput() {
+    const q = document.getElementById('search-input').value.trim().toLowerCase();
+    const box = document.getElementById('search-suggestions');
+    if (!q) { box.style.display = 'none'; return; }
+    const matches = citizensData.filter(c => c.username.toLowerCase().includes(q) || String(c.id_num) === q || (c.region && c.region.includes(q))).slice(0, 5);
+    if (!matches.length) { box.style.display = 'none'; return; }
+    box.innerHTML = matches.map(m => `<div class="sugg-item" onclick="flyToCitizen('${m.username}')"><span>${m.username} ${m.flag_emoji || ''}</span><span style="color:var(--electric);">#${m.id_num}</span></div>`).join('');
+    box.style.display = 'block';
+  }
+
+  function executeSearch() {
+    const q = document.getElementById('search-input').value.trim().toLowerCase();
+    document.getElementById('search-suggestions').style.display = 'none';
+    if (!q) return;
+    const found = citizensData.find(c => c.username.toLowerCase().includes(q) || String(c.id_num) === q);
+    if (found) flyToCitizen(found.username);
+    else showToast("لم يُعثر على أثر", "اضغط على (أثري) في الأسفل لبناء بيتك فوراً!");
+  }
+
+  function flyToCitizen(username) {
+    document.getElementById('search-suggestions').style.display = 'none';
+    const pos = userPositions[username.toLowerCase()];
+    const c = citizensData.find(x => x.username.toLowerCase() === username.toLowerCase());
+    if (!pos || !c) return;
+    flyTarget = { cam: new THREE.Vector3(pos[0] + 15, 13, pos[1] + 15), look: new THREE.Vector3(pos[0], 2, pos[1]) };
+    setTimeout(() => openProfileModal(c), 900);
+  }
+
+  function openMyHouseOrJoin() {
+    if (myUser) openProfileModal(myUser);
+    else openModal('join-modal');
+  }
+
+  function openProfileModal(citizen) {
+    activeProfileUser = citizen;
+    const locked = new Date(citizen.unlock_at) > new Date();
+    const giftName = locked ? "🎁 هدية غامضة (5 ساعات)" : (citizen.gift_type === 'palace' ? "👑 قصر ملكي" : citizen.gift_type === 'supercar' ? "🏎️ فيلا + سيارة رياضية" : "🏡 فيلا معمارية");
+    document.getElementById('profile-content').innerHTML = `
+      <div class="card-item" style="text-align:center; border-color:var(--electric);">
+        <div style="font-size:26px; font-weight:900; color:#fff;">${citizen.username} ${citizen.flag_emoji || ''}</div>
+        <div style="font-size:12px; color:var(--electric); font-weight:800; margin-top:2px;">المشارك رقم #${citizen.id_num} • ${citizen.region || 'حي البداية'}</div>
+      </div>
+      <div class="row2">
+        <div class="card-item" style="flex:1; margin:0;"><div class="lbl">الممتلكات</div><div class="val">${giftName}</div></div>
+        <div class="card-item" style="flex:1; margin:0;"><div class="lbl">النقاط</div><div class="val">${citizen.points || 20} نقطة</div></div>
+      </div>
+      <div class="card-item" style="margin-top:8px;"><div class="lbl">تاريخ الانضمام والشارة</div><div class="val">${citizen.joined || '2026-11-27'} • شارة مؤسس مدينة عشق</div></div>
+    `;
+    openModal('profile-modal');
+  }
+
+  // === مولد بطاقة الستوري (تحميل صورة PNG حقيقية 9:16) ===
+  function downloadStoryPNG() {
+    const c = activeProfileUser || citizensData[0];
+    const canvas = document.getElementById('share-canvas');
+    const ctx = canvas.getContext('2d');
+    const grad = ctx.createLinearGradient(0, 0, 540, 960);
+    grad.addColorStop(0, '#080B12'); grad.addColorStop(0.5, '#0F1B33'); grad.addColorStop(1, '#080B12');
+    ctx.fillStyle = grad; ctx.fillRect(0, 0, 540, 960);
+
+    ctx.strokeStyle = '#00D4FF'; ctx.lineWidth = 6; ctx.strokeRect(24, 24, 492, 912);
+    ctx.fillStyle = '#E6D5B8'; ctx.font = 'bold 26px Cairo, sans-serif'; ctx.textAlign = 'center';
+    ctx.fillText('AŞK CITY • @i.askyouu', 270, 110);
+
+    ctx.fillStyle = '#FFFFFF'; ctx.font = 'bold 46px Cairo, sans-serif';
+    ctx.fillText(c.username, 270, 260);
+    ctx.fillStyle = '#00D4FF'; ctx.font = 'bold 28px Cairo, sans-serif';
+    ctx.fillText(`المشارك رقم #${c.id_num} • ${c.region || 'حي البداية'}`, 270, 320);
+
+    ctx.font = '120px sans-serif';
+    ctx.fillText(c.gift_type === 'palace' ? '👑' : c.gift_type === 'supercar' ? '🏎️' : '🏡', 270, 500);
+
+    ctx.fillStyle = '#E6D5B8'; ctx.font = 'bold 30px Cairo, sans-serif';
+    ctx.fillText('«أنا جزء من هذا العالم»', 270, 650);
+    ctx.fillStyle = '#94A3B8'; ctx.font = '22px Cairo, sans-serif';
+    ctx.fillText('لم يكن هنا شيء… حتى وصلت أنت', 270, 710);
+
+    const link = document.createElement('a');
+    link.download = `ask-city-${c.username.replace('@', '')}.png`;
+    link.href = canvas.toDataURL('image/png');
+    link.click();
+    showToast("تم تحميل البطاقة!", "شاركها الآن في ستوري إنستغرام مع تاق @i.askyouu.");
+  }
+
+  function copyProfileLink() {
+    const u = (activeProfileUser || citizensData[0]).username;
+    const url = `${window.location.origin}${window.location.pathname}?user=${encodeURIComponent(u)}`;
+    navigator.clipboard.writeText(url);
+    showToast("تم نسخ رابط موقعك!", "أي شخص يفتح الرابط سيطير مباشرة نحو بيتك.");
+  }
+
+  // === الانضمام والهدية الغامضة ===
+  function joinCity() {
+    let u = document.getElementById('join-user').value.trim();
     if (!u) return alert("اكتب يوزرك أولاً!");
-    if (!u.startsWith("@")) u = "@" + u;
-    if (!followed && !confirm("هل تابعت حساب @i.askyouu على إنستغرام؟")) return;
+    if (!u.startsWith('@')) u = '@' + u;
+    if (!followed && !confirm("هل قمت بمتابعة حساب @i.askyouu على إنستغرام؟")) return;
 
     const gifts = ['house', 'supercar', 'palace'];
-    myGiftData = {
+    myUser = {
+      id_num: citizensData.length + 1,
       username: u,
       gift_type: gifts[Math.floor(Math.random() * gifts.length)],
-      flag_emoji: document.getElementById('flag-select').value,
-      color_hex: document.getElementById('color-select').value,
-      points: 20,
+      flag_emoji: document.getElementById('join-flag').value,
+      region: document.getElementById('join-region').value,
+      color_hex: document.getElementById('join-color').value,
+      points: 30,
+      joined: new Date().toISOString().slice(0, 10),
       unlock_at: new Date(Date.now() + 5 * 60 * 60 * 1000).toISOString()
     };
-    myPoints = 20; document.getElementById('my-points').innerText = myPoints;
-
-    const idx = citizensData.findIndex(c => c.username === u);
-    if (idx === -1) citizensData.push(myGiftData); else citizensData[idx] = myGiftData;
-    saveAllLocal();
-
+    citizensData.push(myUser);
+    saveLocal();
+    document.getElementById('hud-points').innerText = myUser.points;
     renderCitizens();
-    closeModal('gate-modal');
-    startCountdown(myGiftData.unlock_at);
-    document.getElementById('search-input').value = u;
-    flyToUser();
+    closeModal('join-modal');
+    startCountdown(myUser.unlock_at);
+    flyToCitizen(u);
   }
 
   function startCountdown(iso) {
-    const pill = document.getElementById('mystery-pill');
-    pill.style.display = 'flex';
+    const b = document.getElementById('mystery-bar'); b.style.display = 'flex';
     const iv = setInterval(() => {
       const d = new Date(iso) - new Date();
-      if (d <= 0) { clearInterval(iv); pill.style.display = 'none'; renderCitizens(); return; }
+      if (d <= 0) { clearInterval(iv); b.style.display = 'none'; renderCitizens(); return; }
       const h = String(Math.floor(d / 3600000)).padStart(2, '0');
       const m = String(Math.floor((d % 3600000) / 60000)).padStart(2, '0');
       const s = String(Math.floor((d % 60000) / 1000)).padStart(2, '0');
@@ -774,119 +1098,126 @@
   }
 
   function instantReveal() {
-    if (!myGiftData) return;
-    myGiftData.unlock_at = new Date(Date.now() - 1000).toISOString();
-    const idx = citizensData.findIndex(c => c.username === myGiftData.username);
-    if (idx !== -1) citizensData[idx] = myGiftData;
-    saveAllLocal();
-    document.getElementById('mystery-pill').style.display = 'none';
+    if (!myUser) return;
+    myUser.unlock_at = new Date(Date.now() - 1000).toISOString();
+    const idx = citizensData.findIndex(c => c.username === myUser.username);
+    if (idx !== -1) citizensData[idx] = myUser;
+    saveLocal();
+    document.getElementById('mystery-bar').style.display = 'none';
     renderCitizens();
-    openStoryCard();
+    openProfileModal(myUser);
   }
 
-  function openStoryCard() {
-    if (!myGiftData) return openModal('gate-modal');
-    closeModal('gate-modal');
-    document.getElementById('story-user').innerText = `${myGiftData.username} ${myGiftData.flag_emoji || ''}`;
-    const locked = new Date(myGiftData.unlock_at) > new Date();
-    document.getElementById('story-icon').innerText = locked ? "🎁" : (myGiftData.gift_type === 'palace' ? "👑" : myGiftData.gift_type === 'supercar' ? "🏎️" : "🏡");
-    document.getElementById('story-desc').innerText = locked ? "صندوق هديتي الغامض ينتظر الفتح في مدينة عشق!" : "تم بناء بيتي باسمي في مدينة عشق!";
-    openModal('story-modal');
+  // === الأحياء، الأحداث، التصويت، الهمسات ===
+  function renderRegionsModal() {
+    document.getElementById('regions-list').innerHTML = REGIONS.map((r, i) => `
+      <div class="card-item" style="cursor:pointer;" onclick="goToRegion(${i})">
+        <div class="lbl">${r.name} • ${r.en}</div>
+        <div class="val">${r.desc}</div>
+      </div>
+    `).join('');
+  }
+  function goToRegion(i) {
+    closeModal('regions-modal');
+    const r = REGIONS[i];
+    flyTarget = { cam: new THREE.Vector3(...r.cam), look: new THREE.Vector3(...r.look) };
+    showToast(r.name, r.desc);
   }
 
-  // === الرسائل المجهولة ===
-  function openMessagesModal() {
-    const list = document.getElementById('messages-list');
-    list.innerHTML = '';
-    messagesData.slice(0, 15).forEach(m => {
-      const div = document.createElement('div');
-      div.className = 'msg-card';
-      div.innerHTML = `<div class="to">إلى: ${m.to_user}</div><div class="body">${m.message}</div>`;
-      list.appendChild(div);
-    });
-    openModal('messages-modal');
+  function openEventsModal() {
+    const st = STAGES[currentStage] || STAGES[1];
+    document.getElementById('ev-stage-title').innerText = st.name;
+    document.getElementById('ev-stage-desc').innerText = st.desc;
+    const total = pollData.reduce((a, b) => a + b.votes, 0) || 1;
+    document.getElementById('poll-options').innerHTML = pollData.map(p => {
+      const pct = Math.round((p.votes / total) * 100);
+      return `<div style="margin-bottom:8px; cursor:pointer;" onclick="votePoll(${p.id})">
+        <div style="display:flex; justify-content:space-between; font-size:12px;"><span>${p.label}</span><span style="color:var(--electric);">${pct}%</span></div>
+        <div class="poll-bar-bg"><div class="poll-bar-fill" style="width:${pct}%;"></div></div>
+      </div>`;
+    }).join('');
+    openModal('events-modal');
   }
 
-  function sendAnonymousMessage() {
-    const to = document.getElementById('msg-to').value.trim() || "الجميع";
-    const body = document.getElementById('msg-body').value.trim();
-    if (!body) return alert("اكتب رسالتك أولاً!");
-    messagesData.unshift({ to_user: to, message: body });
-    saveAllLocal();
-    document.getElementById('msg-body').value = '';
-    openMessagesModal();
-    showToast("تم الإرسال بسرية", "وصلت همستك المجهولة إلى سماء مدينة عشق!");
+  function votePoll(id) {
+    const item = pollData.find(p => p.id === id);
+    if (!item) return;
+    item.votes++;
+    if (palaceDome) palaceDome.material.color.setHex(item.color);
+    saveLocal();
+    openEventsModal();
+    showToast("تم تسجيل صوتك!", `تغيّرت إضاءة قبة قصر العشق إلى (${item.label}).`);
   }
 
-  // === حي الأصدقاء والدعوة ===
-  function openFriendsModal() {
-    const myU = myGiftData ? myGiftData.username : "@i.askyouu";
-    const link = `${window.location.origin}${window.location.pathname}?ref=${encodeURIComponent(myU)}`;
-    document.getElementById('invite-link-box').value = link;
-    const lb = document.getElementById('leaderboard-list');
-    lb.innerHTML = '';
-    [...citizensData].sort((a, b) => (b.points || 0) - (a.points || 0)).slice(0, 6).forEach((c, i) => {
-      const div = document.createElement('div');
-      div.className = 'msg-card';
-      div.style.display = 'flex'; div.style.justifyContent = 'space-between';
-      div.innerHTML = `<span>#${i + 1} <b>${c.username}</b> ${c.flag_emoji || ''}</span><span style="color:var(--electric); font-weight:800;">${c.points || 10} نقطة</span>`;
-      lb.appendChild(div);
-    });
-    openModal('friends-modal');
+  function answerQuiz(ok) {
+    closeModal('events-modal');
+    if (ok) { addPoints(30); showToast("إجابة صحيحة! +30 نقطة", "أنت من أهل مدينة عشق."); }
+    else showToast("حاول مجدداً", "تلميح: الساعة المتشابهة الأرقام!");
   }
 
-  function copyInviteLink() {
-    const box = document.getElementById('invite-link-box');
-    box.select(); navigator.clipboard.writeText(box.value);
-    showToast("تم النسخ!", "أرسل الرابط لأصدقائك ليصبحوا جيرانك في المدينة.");
-  }
-
-  // === التحديات ===
-  function addPoints(amount) {
-    myPoints += amount;
-    document.getElementById('my-points').innerText = myPoints;
-    if (myGiftData) {
-      myGiftData.points = myPoints;
-      const idx = citizensData.findIndex(c => c.username === myGiftData.username);
-      if (idx !== -1) citizensData[idx].points = myPoints;
-      saveAllLocal();
+  function addPoints(n) {
+    if (myUser) {
+      myUser.points = (myUser.points || 20) + n;
+      const idx = citizensData.findIndex(c => c.username === myUser.username);
+      if (idx !== -1) citizensData[idx].points = myUser.points;
+      document.getElementById('hud-points').innerText = myUser.points;
+      saveLocal();
+    } else {
+      const cur = Number(document.getElementById('hud-points').innerText) + n;
+      document.getElementById('hud-points').innerText = cur;
     }
   }
-  function answerChallenge(correct) {
-    closeModal('challenge-modal');
-    if (correct) { addPoints(30); showToast("إجابة صحيحة! +30 نقطة", "أنت من أهل مدينة عشق الحقيقيين."); }
-    else showToast("حاول مجدداً", "تلميح: الساعة التي تتشابه أرقامها ليلاً!");
+
+  function openMessagesModal() {
+    document.getElementById('messages-list').innerHTML = whispersData.slice(0, 15).map(w => `
+      <div class="card-item"><div class="lbl">إلى: ${w.to}</div><div class="val">${w.msg}</div></div>
+    `).join('');
+    openModal('messages-modal');
+  }
+  function sendWhisper() {
+    const to = document.getElementById('msg-to').value.trim() || "الجميع";
+    const msg = document.getElementById('msg-body').value.trim();
+    if (!msg) return;
+    whispersData.unshift({ to, msg });
+    saveLocal();
+    document.getElementById('msg-body').value = '';
+    openMessagesModal();
   }
 
-  // === لوحة الإدارة السرية ===
+  // === لوحة الإدارة ===
+  function changeWorldStage(st) {
+    currentStage = st;
+    document.getElementById('hud-stage').innerText = `المرحلة ${st}`;
+    saveLocal();
+    showToast(STAGES[st].name, STAGES[st].desc);
+  }
   function renderAdmin() {
+    document.getElementById('admin-stage-sel').value = currentStage;
     document.getElementById('admin-cnt').innerText = citizensData.length;
-    const l = document.getElementById('admin-list'); l.innerHTML = '';
-    citizensData.forEach(c => {
-      const d = document.createElement('div'); d.className = 'msg-card';
-      d.style.display = 'flex'; d.style.justifyContent = 'space-between'; d.style.alignItems = 'center';
-      d.innerHTML = `<span><b>${c.username}</b></span><div>
-        <button onclick="adminUnlock('${c.username}')" style="background:var(--electric); color:#000; border:none; padding:4px 8px; border-radius:8px; font-weight:800; margin-left:4px;">فتح</button>
-        <button onclick="adminDel('${c.username}')" style="background:#ef4444; color:#fff; border:none; padding:4px 8px; border-radius:8px; font-weight:800;">حذف</button>
-      </div>`;
-      l.appendChild(d);
-    });
+    document.getElementById('admin-list').innerHTML = citizensData.map(c => `
+      <div class="card-item" style="display:flex; justify-content:space-between; align-items:center;">
+        <span><b>${c.username}</b> (#${c.id_num})</span>
+        <div>
+          <button onclick="adminUnlock('${c.username}')" style="background:var(--electric); color:#000; border:none; padding:4px 8px; border-radius:8px; font-weight:800; margin-left:4px;">فتح</button>
+          <button onclick="adminDel('${c.username}')" style="background:#ef4444; color:#fff; border:none; padding:4px 8px; border-radius:8px; font-weight:800;">حذف</button>
+        </div>
+      </div>
+    `).join('');
   }
   function adminAdd() {
     let u = document.getElementById('admin-u').value.trim(); if (!u) return;
     if (!u.startsWith('@')) u = '@' + u;
-    citizensData.push({ username: u, gift_type: document.getElementById('admin-g').value, flag_emoji: '💙', color_hex: '#E6D5B8', points: 20, unlock_at: new Date(Date.now() - 10000).toISOString() });
-    saveAllLocal(); renderCitizens(); renderAdmin(); document.getElementById('admin-u').value = '';
+    citizensData.push({ id_num: citizensData.length + 1, username: u, gift_type: document.getElementById('admin-g').value, flag_emoji: '❤️', region: 'حي البداية', color_hex: '#f5efe6', points: 25, joined: new Date().toISOString().slice(0, 10), unlock_at: new Date(Date.now() - 10000).toISOString() });
+    saveLocal(); renderCitizens(); renderAdmin(); document.getElementById('admin-u').value = '';
   }
   function adminUnlock(u) {
-    const f = citizensData.find(c => c.username === u);
-    if (f) f.unlock_at = new Date(Date.now() - 10000).toISOString();
-    saveAllLocal(); renderCitizens(); renderAdmin();
+    const f = citizensData.find(c => c.username === u); if (f) f.unlock_at = new Date(Date.now() - 10000).toISOString();
+    saveLocal(); renderCitizens(); renderAdmin();
   }
   function adminDel(u) {
     if (!confirm(`حذف ${u}؟`)) return;
     citizensData = citizensData.filter(c => c.username !== u);
-    saveAllLocal(); renderCitizens(); renderAdmin();
+    saveLocal(); renderCitizens(); renderAdmin();
   }
 
   // === القيادة والتفاعل ===
@@ -896,8 +1227,8 @@
     document.getElementById('drive-pad').style.display = driveMode ? 'flex' : 'none';
     controls.enabled = !driveMode;
     if (driveMode && !playerCar) {
-      playerCar = createSportsCar(myGiftData ? myGiftData.username : "سائق عشق");
-      playerCar.position.set(0, 0, 22);
+      playerCar = createRealisticCar(myUser ? myUser.username : "سائق عشق", 0xb91c1c);
+      playerCar.position.set(0, 0.15, 22);
       citizensGroup.add(playerCar);
     }
   }
@@ -918,31 +1249,43 @@
     raycaster.setFromCamera(mouse, camera);
     const hits = raycaster.intersectObjects(clickableObjects);
     if (!hits.length) return;
-    const obj = hits[0].object;
-    if (obj.userData.type === 'district') showToast(obj.userData.info.name, obj.userData.info.desc);
-    if (obj.userData.type === 'star') {
-      obj.position.set((Math.random() - 0.5) * 180, 1.8, [-66, -22, 22, 66][Math.floor(Math.random() * 4)]);
+    const d = hits[0].object.userData;
+    if (d.type === 'region') goToRegion(d.regionIdx);
+    if (d.type === 'citizen') flyToCitizen(d.username);
+    if (d.type === 'star') {
+      hits[0].object.position.set((Math.random() - 0.5) * 185, 1.8, [-66, -22, 22, 66][Math.floor(Math.random() * 4)]);
       addPoints(15);
-      showToast("التقطت نجمة نيون! +15 نقطة", "استمر في جمع النجوم لتتصدر المدينة.");
+      showToast("نجمة جديدة! +15 نقطة", "واصل استكشاف المدينة.");
     }
   });
 
+  function openModal(id) { document.getElementById(id).classList.remove('hidden'); }
+  function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
+  function showToast(h, p) {
+    document.getElementById('toast-h').innerText = h; document.getElementById('toast-p').innerText = p;
+    const t = document.getElementById('toast'); t.style.display = 'block';
+    setTimeout(() => t.style.display = 'none', 3800);
+  }
+
+  // === حلقة التحديث السينمائية ===
   function animate() {
     requestAnimationFrame(animate);
-    if (centralRing) centralRing.rotation.z += 0.008;
-    starObjects.forEach(s => s.rotation.y += 0.04);
+    const t = Date.now() * 0.001;
+    if (oceanMesh) oceanMesh.position.y = -2.2 + Math.sin(t) * 0.12;
+    if (fountainRing) fountainRing.rotation.z += 0.006;
+    starObjects.forEach(s => s.rotation.y += 0.035);
 
     if (flyTarget) {
-      camera.position.lerp(flyTarget.cam, 0.08);
-      controls.target.lerp(flyTarget.look, 0.08);
+      camera.position.lerp(flyTarget.cam, 0.075);
+      controls.target.lerp(flyTarget.look, 0.075);
       if (camera.position.distanceTo(flyTarget.cam) < 0.7) flyTarget = null;
     }
 
     aiCars.forEach(c => {
       if (driveMode && c.mesh === playerCar) return;
       c.mesh.position.x += c.speed * c.dir;
-      if (c.mesh.position.x > 120) { c.dir = -1; c.mesh.rotation.y = -Math.PI / 2; }
-      if (c.mesh.position.x < -120) { c.dir = 1; c.mesh.rotation.y = Math.PI / 2; }
+      if (c.mesh.position.x > 118) { c.dir = -1; c.mesh.rotation.y = -Math.PI / 2; }
+      if (c.mesh.position.x < -118) { c.dir = 1; c.mesh.rotation.y = Math.PI / 2; }
     });
 
     if (driveMode && playerCar) {
@@ -953,14 +1296,13 @@
         if (keys.left) playerCar.rotation.y += 0.045 * Math.sign(carSpeed);
         if (keys.right) playerCar.rotation.y -= 0.045 * Math.sign(carSpeed);
       }
-      playerCar.position.x = THREE.MathUtils.clamp(playerCar.position.x + Math.sin(playerCar.rotation.y) * carSpeed, -125, 125);
-      playerCar.position.z = THREE.MathUtils.clamp(playerCar.position.z + Math.cos(playerCar.rotation.y) * carSpeed, -125, 125);
+      playerCar.position.x = THREE.MathUtils.clamp(playerCar.position.x + Math.sin(playerCar.rotation.y) * carSpeed, -122, 122);
+      playerCar.position.z = THREE.MathUtils.clamp(playerCar.position.z + Math.cos(playerCar.rotation.y) * carSpeed, -122, 122);
 
       starObjects.forEach(s => {
         if (playerCar.position.distanceTo(s.position) < 3.5) {
-          s.position.set((Math.random() - 0.5) * 180, 1.8, [-66, -22, 22, 66][Math.floor(Math.random() * 4)]);
-          addPoints(15);
-          showToast("صيد بالسيارة! +15 نقطة", "أحسنت يا بطل الشوارع!");
+          s.position.set((Math.random() - 0.5) * 185, 1.8, [-66, -22, 22, 66][Math.floor(Math.random() * 4)]);
+          addPoints(15); showToast("صيد بالسيارة! +15 نقطة", "رائع!");
         }
       });
 
@@ -973,10 +1315,18 @@
   }
 
   // === التشغيل ===
-  document.getElementById('my-points').innerText = myPoints;
-  if (myGiftData && new Date(myGiftData.unlock_at) > new Date()) startCountdown(myGiftData.unlock_at);
+  document.getElementById('hud-stage').innerText = `المرحلة ${currentStage}`;
+  if (myUser) {
+    document.getElementById('hud-points').innerText = myUser.points || 20;
+    if (new Date(myUser.unlock_at) > new Date()) startCountdown(myUser.unlock_at);
+  }
+  renderRegionsModal();
   renderCitizens();
   animate();
+
+  // فتح موقع مشارك مباشرة إذا دخل من رابط مشاركة (?user=@...)
+  const sharedUser = new URLSearchParams(window.location.search).get('user');
+  if (sharedUser) { setTimeout(() => { enterWorld(); flyToCitizen(sharedUser); }, 900); }
 
   window.addEventListener('resize', () => {
     camera.aspect = window.innerWidth / window.innerHeight;
