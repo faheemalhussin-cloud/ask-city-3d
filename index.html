@@ -1,0 +1,667 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>مدينة عشق 3D | Aşk City</title>
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;800;900&family=Amiri:wght@700&display=swap" rel="stylesheet">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    :root {
+      --gold: #D4AF37;
+      --crimson: #8B0023;
+      --dark: #0A0A0E;
+      --glass: rgba(14, 14, 20, 0.85);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; font-family: 'Cairo', sans-serif; }
+    body { overflow: hidden; background: #050811; color: #fff; }
+    #canvas-container { position: fixed; inset: 0; z-index: 1; }
+
+    /* الشريط العلوي */
+    .hud-top {
+      position: fixed; top: 14px; left: 14px; right: 14px; z-index: 10;
+      display: flex; justify-content: space-between; align-items: center; pointer-events: none; flex-wrap: wrap; gap: 8px;
+    }
+    .brand-badge {
+      background: var(--glass); border: 1px solid rgba(212,175,55,0.45);
+      padding: 8px 16px; border-radius: 50px; backdrop-filter: blur(12px);
+      display: flex; align-items: center; gap: 10px; pointer-events: auto;
+      box-shadow: 0 8px 25px rgba(0,0,0,0.5);
+    }
+    .brand-badge h1 { font-size: 15px; font-weight: 900; color: var(--gold); }
+    .brand-badge span { font-size: 12px; background: var(--crimson); padding: 2px 10px; border-radius: 20px; font-weight: 700; }
+
+    .top-actions { display: flex; gap: 6px; pointer-events: auto; flex-wrap: wrap; }
+    .btn-hud {
+      background: var(--glass); border: 1px solid rgba(212,175,55,0.4);
+      color: #fff; padding: 8px 13px; border-radius: 30px; font-size: 12px;
+      font-weight: 700; cursor: pointer; backdrop-filter: blur(10px); transition: 0.25s;
+    }
+    .btn-hud:hover, .btn-hud.active { background: var(--gold); color: #000; }
+
+    /* بوابة المتابعة والهدية الغامضة */
+    .modal-overlay {
+      position: fixed; inset: 0; z-index: 50; background: rgba(5, 6, 12, 0.88);
+      backdrop-filter: blur(14px); display: flex; align-items: center; justify-content: center; padding: 16px;
+    }
+    .modal-card {
+      background: linear-gradient(145deg, #12121A, #09090D);
+      border: 1px solid rgba(212,175,55,0.5); border-radius: 24px;
+      max-width: 420px; width: 100%; padding: 26px; text-align: center;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.85);
+    }
+    .modal-card h2 { font-family: 'Amiri', serif; font-size: 28px; color: var(--gold); margin-bottom: 8px; }
+    .modal-card p { font-size: 14px; color: #ccc; line-height: 1.7; margin-bottom: 18px; }
+    .input-box {
+      width: 100%; padding: 12px 16px; border-radius: 14px; border: 1px solid rgba(212,175,55,0.4);
+      background: rgba(255,255,255,0.06); color: #fff; font-size: 15px; margin-bottom: 12px; text-align: center;
+    }
+    .btn-primary {
+      width: 100%; padding: 13px; border-radius: 14px; border: none;
+      background: linear-gradient(90deg, var(--crimson), #b3002d); color: #fff;
+      font-size: 14px; font-weight: 800; cursor: pointer; margin-bottom: 10px;
+      box-shadow: 0 6px 20px rgba(139,0,35,0.45);
+    }
+    .btn-gold {
+      width: 100%; padding: 13px; border-radius: 14px; border: none;
+      background: linear-gradient(90deg, #D4AF37, #F3D066); color: #000;
+      font-size: 14px; font-weight: 900; cursor: pointer;
+    }
+
+    /* شريط الهدية الغامضة السفلي */
+    .mystery-bar {
+      position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%); z-index: 15;
+      background: var(--glass); border: 1px solid var(--gold); border-radius: 20px;
+      padding: 12px 18px; display: none; align-items: center; gap: 12px;
+      backdrop-filter: blur(12px); width: 92%; max-width: 480px; justify-content: space-between;
+    }
+    .timer-text { font-size: 18px; font-weight: 900; color: var(--gold); direction: ltr; }
+
+    /* أزرار قيادة السيارة باللمس */
+    .drive-controls {
+      position: fixed; bottom: 24px; inset-x: 20px; z-index: 20;
+      display: none; justify-content: space-between; align-items: flex-end; pointer-events: none;
+    }
+    .pad-group { display: flex; gap: 10px; pointer-events: auto; }
+    .drive-btn {
+      width: 58px; height: 58px; border-radius: 50%; background: rgba(15,15,22,0.88);
+      border: 2px solid var(--gold); color: var(--gold); font-size: 22px; font-weight: 900;
+      display: flex; align-items: center; justify-content: center; touch-action: manipulation;
+    }
+    .drive-btn:active { background: var(--gold); color: #000; transform: scale(0.94); }
+
+    /* قائمة سكان المدينة */
+    .citizens-drawer {
+      position: fixed; top: 68px; right: 14px; width: 270px; max-height: 65vh;
+      background: var(--glass); border: 1px solid rgba(212,175,55,0.35); border-radius: 18px;
+      padding: 14px; z-index: 15; overflow-y: auto; display: none; backdrop-filter: blur(12px);
+    }
+    .citizen-item {
+      padding: 9px 12px; border-radius: 12px; background: rgba(255,255,255,0.05);
+      margin-bottom: 8px; cursor: pointer; display: flex; justify-content: space-between; align-items: center;
+      font-size: 13px; border: 1px solid transparent;
+    }
+    .citizen-item:hover { border-color: var(--gold); }
+
+    /* بطاقة الستوري */
+    .story-card {
+      background: linear-gradient(160deg, #1a050b, #09090d);
+      border: 2px solid var(--gold); border-radius: 24px; padding: 28px 20px;
+      max-width: 340px; width: 100%; text-align: center; position: relative;
+    }
+    .hidden { display: none !important; }
+  </style>
+</head>
+<body>
+
+<div id="canvas-container"></div>
+
+<!-- الشريط العلوي -->
+<div class="hud-top">
+  <div class="brand-badge">
+    <h1>مدينة عشق | Aşk City</h1>
+    <span id="citizen-count">0 مواطن</span>
+  </div>
+  <div class="top-actions">
+    <button class="btn-hud" id="btn-drive-mode" onclick="toggleDriveMode()">🚗 قيادة</button>
+    <button class="btn-hud" onclick="toggleCitizens()">🏘️ السكان</button>
+    <button class="btn-hud" onclick="openStoryCard()">📸 بطاقتي</button>
+    <button class="btn-hud" onclick="openGate()">🎁 هديتي</button>
+  </div>
+</div>
+
+<!-- قائمة السكان -->
+<div class="citizens-drawer" id="citizens-drawer">
+  <h3 style="color:var(--gold); font-size:14px; margin-bottom:10px;">ممتلكات متابعي @i.askyouu</h3>
+  <div id="citizens-list"></div>
+</div>
+
+<!-- شريط الهدية الغامضة -->
+<div class="mystery-bar" id="mystery-bar">
+  <div>
+    <div style="font-size:12px; color:#ccc;">صندوقك الغامض يفتح بعد:</div>
+    <div class="timer-text" id="countdown">05:00:00</div>
+  </div>
+  <button class="btn-hud active" onclick="instantReveal()">✨ معاينة الفتح الآن</button>
+</div>
+
+<!-- أزرار التحكم بالسيارة -->
+<div class="drive-controls" id="drive-controls">
+  <div class="pad-group">
+    <button class="drive-btn" id="btn-right">→</button>
+    <button class="drive-btn" id="btn-left">←</button>
+  </div>
+  <div class="pad-group">
+    <button class="drive-btn" id="btn-down">↓</button>
+    <button class="drive-btn" id="btn-up">↑</button>
+  </div>
+</div>
+
+<!-- بوابة المتابعة الإلزامية -->
+<div class="modal-overlay" id="gate-modal">
+  <div class="modal-card">
+    <h2>أهلاً بك في مدينة عشق 🌿✨</h2>
+    <p>مدينة تفاعلية تضم منازل، أبراج، وسيارات متابعي حساب <b>@i.askyouu</b>.<br>تابع الحساب أولاً لتحصل على أرضك وهديتك الغامضة باسمك!</p>
+    <a href="https://www.instagram.com/i.askyouu?rpxt=eHNvdzlkZ2g0M2R5" target="_blank" onclick="markFollowed()" style="text-decoration:none;">
+      <button class="btn-primary">1. متابعة حساب @i.askyouu على إنستغرام</button>
+    </a>
+    <input type="text" id="username-input" class="input-box" placeholder="اكتب اسمك أو يوزرك ليُحفر على هديتك..." />
+    <button class="btn-gold" onclick="claimMysteryGift()">2. استلام هديتي الغامضة وبناء أرضي</button>
+    <button onclick="closeGate()" style="background:none; border:none; color:#888; margin-top:12px; font-size:12px; cursor:pointer;">تصفح المدينة كزائر أولاً</button>
+  </div>
+</div>
+
+<!-- نافذة بطاقة الستوري -->
+<div class="modal-overlay hidden" id="story-modal">
+  <div class="story-card">
+    <div style="font-size:12px; color:var(--gold); letter-spacing:2px; margin-bottom:6px;">AŞK CITY • @i.askyouu</div>
+    <h2 id="story-username" style="font-size:26px; color:#fff; margin-bottom:10px;">مواطن عشق</h2>
+    <div id="story-gift-icon" style="font-size:54px; margin:12px 0;">🎁</div>
+    <p id="story-gift-desc" style="color:#e0e0e0; font-size:15px; margin-bottom:18px;">صندوق غامض قيد الفتح في مدينة عشق</p>
+    <div style="font-size:12px; color:var(--gold); border-top:1px solid rgba(212,175,55,0.3); padding-top:12px; margin-bottom:14px;">
+      صوّر الشاشة وشاركها في ستوري إنستغرام مع تاق <b>@i.askyouu</b>
+    </div>
+    <button class="btn-gold" onclick="document.getElementById('story-modal').classList.add('hidden')">إغلاق البطاقة</button>
+  </div>
+</div>
+
+<script>
+  // === بيانات الاتصال بقاعدة بيانات Supabase ===
+  const SUPABASE_URL = "https://dnmscjuzmkuskxadeipd.supabase.co";
+  const SUPABASE_KEY = "sb_publishable_7Cn16nplTiFMCyIcVxElEg_muXd9Bz2";
+  const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+  // === تهيئة المشهد ثلاثي الأبعاد ===
+  const container = document.getElementById('canvas-container');
+  const scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x0b132b);
+  scene.fog = new THREE.FogExp2(0x0b132b, 0.0042);
+
+  const camera = new THREE.PerspectiveCamera(55, window.innerWidth / window.innerHeight, 0.1, 1000);
+  camera.position.set(45, 38, 45);
+
+  const renderer = new THREE.WebGLRenderer({ antialias: true });
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.shadowMap.enabled = true;
+  container.appendChild(renderer.domElement);
+
+  const controls = new THREE.OrbitControls(camera, renderer.domElement);
+  controls.enableDamping = true;
+  controls.maxPolarAngle = Math.PI / 2.15;
+
+  // الإضاءة
+  const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
+  scene.add(ambientLight);
+  const sunLight = new THREE.DirectionalLight(0xfff4d6, 1.1);
+  sunLight.position.set(60, 100, 40);
+  sunLight.castShadow = true;
+  scene.add(sunLight);
+
+  // === بناء المدينة الخضراء والشوارع ===
+  function buildGreenCity() {
+    const grassGeo = new THREE.BoxGeometry(240, 2, 240);
+    const grassMat = new THREE.MeshStandardMaterial({ color: 0x2d6a4f, roughness: 0.85 });
+    const grass = new THREE.Mesh(grassGeo, grassMat);
+    grass.position.y = -1;
+    grass.receiveShadow = true;
+    scene.add(grass);
+
+    const roadMat = new THREE.MeshStandardMaterial({ color: 0x1f242d, roughness: 0.7 });
+    const roadPositions = [-60, -20, 20, 60];
+
+    roadPositions.forEach(pos => {
+      const rH = new THREE.Mesh(new THREE.BoxGeometry(240, 0.15, 8), roadMat);
+      rH.position.set(0, 0.05, pos);
+      scene.add(rH);
+      const rV = new THREE.Mesh(new THREE.BoxGeometry(8, 0.15, 240), roadMat);
+      rV.position.set(pos, 0.05, 0);
+      scene.add(rV);
+    });
+
+    // برج عشق المركزي في ساحة المدينة
+    const base = new THREE.Mesh(new THREE.CylinderGeometry(7, 8.5, 2, 16), new THREE.MeshStandardMaterial({ color: 0x111116 }));
+    base.position.y = 1;
+    scene.add(base);
+
+    const towerBody = new THREE.Mesh(new THREE.CylinderGeometry(2.5, 4.5, 28, 8), new THREE.MeshStandardMaterial({ color: 0x8B0023, metalness: 0.6, roughness: 0.2 }));
+    towerBody.position.y = 15;
+    scene.add(towerBody);
+
+    const crown = new THREE.Mesh(new THREE.OctahedronGeometry(3.2), new THREE.MeshStandardMaterial({ color: 0xD4AF37, emissive: 0x664d00, metalness: 0.9 }));
+    crown.position.y = 32;
+    scene.add(crown);
+
+    // إضافة أشجار طبيعية
+    const treeTrunkMat = new THREE.MeshStandardMaterial({ color: 0x5c4033 });
+    const treeLeafMat = new THREE.MeshStandardMaterial({ color: 0x40916c });
+    for (let i = 0; i < 50; i++) {
+      const tx = (Math.random() - 0.5) * 210;
+      const tz = (Math.random() - 0.5) * 210;
+      if (roadPositions.some(r => Math.abs(tx - r) < 7 || Math.abs(tz - r) < 7) || (Math.abs(tx) < 14 && Math.abs(tz) < 14)) continue;
+      const tree = new THREE.Group();
+      const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.4, 2), treeTrunkMat);
+      trunk.position.y = 1;
+      const leaves = new THREE.Mesh(new THREE.ConeGeometry(1.8, 4.5, 7), treeLeafMat);
+      leaves.position.y = 3.8;
+      tree.add(trunk, leaves);
+      tree.position.set(tx, 0, tz);
+      scene.add(tree);
+    }
+  }
+  buildGreenCity();
+
+  // === دوال إنشاء المجسمات الواضحة ===
+  function createLabelSprite(text, subtext = "") {
+    const canvas = document.createElement('canvas');
+    canvas.width = 340; canvas.height = 95;
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = 'rgba(10, 10, 16, 0.88)';
+    ctx.beginPath();
+    ctx.roundRect(10, 10, 320, 75, 18);
+    ctx.fill();
+    ctx.strokeStyle = '#D4AF37';
+    ctx.lineWidth = 3;
+    ctx.stroke();
+    ctx.fillStyle = '#D4AF37';
+    ctx.font = 'bold 24px Cairo, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(text, 170, 44);
+    if (subtext) {
+      ctx.fillStyle = '#ffffff';
+      ctx.font = '16px Cairo, sans-serif';
+      ctx.fillText(subtext, 170, 70);
+    }
+    const tex = new THREE.CanvasTexture(canvas);
+    const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex }));
+    sprite.scale.set(9.5, 2.6, 1);
+    return sprite;
+  }
+
+  function createVillaModel(name) {
+    const group = new THREE.Group();
+    const walls = new THREE.Mesh(new THREE.BoxGeometry(6, 4, 5), new THREE.MeshStandardMaterial({ color: 0xf8f9fa }));
+    walls.position.y = 2;
+    const roof = new THREE.Mesh(new THREE.ConeGeometry(4.8, 2.6, 4), new THREE.MeshStandardMaterial({ color: 0x8B0023 }));
+    roof.position.y = 5.3;
+    roof.rotation.y = Math.PI / 4;
+    const door = new THREE.Mesh(new THREE.BoxGeometry(1.2, 2.2, 0.2), new THREE.MeshStandardMaterial({ color: 0xD4AF37 }));
+    door.position.set(0, 1.1, 2.55);
+    const winMat = new THREE.MeshBasicMaterial({ color: 0xffd166 });
+    const win1 = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 0.2), winMat);
+    win1.position.set(-1.7, 2.3, 2.55);
+    const win2 = win1.clone(); win2.position.x = 1.7;
+
+    const label = createLabelSprite(name, "🏡 فيلا ملكية");
+    label.position.y = 8.4;
+    group.add(walls, roof, door, win1, win2, label);
+    return group;
+  }
+
+  function createTowerModel(name) {
+    const group = new THREE.Group();
+    const body = new THREE.Mesh(new THREE.BoxGeometry(4.5, 14, 4.5), new THREE.MeshStandardMaterial({ color: 0x1b263b, metalness: 0.8, roughness: 0.2 }));
+    body.position.y = 7;
+    const goldTrim = new THREE.Mesh(new THREE.BoxGeometry(4.8, 0.6, 4.8), new THREE.MeshStandardMaterial({ color: 0xD4AF37 }));
+    goldTrim.position.y = 14.2;
+    const label = createLabelSprite(name, "🏙️ برج خاص");
+    label.position.y = 17;
+    group.add(body, goldTrim, label);
+    return group;
+  }
+
+  function createCarModel(name, color = 0xD4AF37) {
+    const car = new THREE.Group();
+    const chassis = new THREE.Mesh(new THREE.BoxGeometry(2.4, 0.8, 4.6), new THREE.MeshStandardMaterial({ color: color, metalness: 0.7, roughness: 0.2 }));
+    chassis.position.y = 0.65;
+    const cabin = new THREE.Mesh(new THREE.BoxGeometry(1.9, 0.7, 2.2), new THREE.MeshStandardMaterial({ color: 0x111111, metalness: 0.9 }));
+    cabin.position.set(0, 1.35, -0.2);
+    const wheelGeo = new THREE.CylinderGeometry(0.45, 0.45, 0.35, 16);
+    const wheelMat = new THREE.MeshStandardMaterial({ color: 0x0a0a0a });
+    [[-1.25, 0.45, 1.4], [1.25, 0.45, 1.4], [-1.25, 0.45, -1.4], [1.25, 0.45, -1.4]].forEach(pos => {
+      const w = new THREE.Mesh(wheelGeo, wheelMat);
+      w.rotation.z = Math.PI / 2;
+      w.position.set(...pos);
+      car.add(w);
+    });
+    const headLight = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.2, 0.1), new THREE.MeshBasicMaterial({ color: 0xffffff }));
+    headLight.position.set(-0.75, 0.7, 2.32);
+    const headLight2 = headLight.clone(); headLight2.position.x = 0.75;
+
+    const label = createLabelSprite(name, "🏎️ سيارة رياضية");
+    label.position.y = 3.2;
+    car.add(chassis, cabin, headLight, headLight2, label);
+    return car;
+  }
+
+  function createMysteryBoxModel(name) {
+    const group = new THREE.Group();
+    const box = new THREE.Mesh(new THREE.BoxGeometry(3.5, 3.5, 3.5), new THREE.MeshStandardMaterial({ color: 0x8B0023, metalness: 0.5 }));
+    box.position.y = 2;
+    const ribbon = new THREE.Mesh(new THREE.BoxGeometry(3.7, 0.6, 3.7), new THREE.MeshStandardMaterial({ color: 0xD4AF37 }));
+    ribbon.position.y = 2;
+    const label = createLabelSprite(name, "🎁 هدية غامضة (5 ساعات)");
+    label.position.y = 5.5;
+    group.add(box, ribbon, label);
+    return group;
+  }
+
+  // === إدارة السكان والسيارات المتحركة ===
+  const citizensGroup = new THREE.Group();
+  scene.add(citizensGroup);
+
+  const citizensData = [
+    { username: "د. فهيم", gift_type: "tower", unlock_at: new Date(Date.now() - 10000).toISOString() },
+    { username: "@i.askyouu", gift_type: "supercar", unlock_at: new Date(Date.now() - 10000).toISOString() }
+  ];
+
+  let aiCars = [];
+  let playerCar = null;
+  let driveMode = false;
+  const keys = { up: false, down: false, left: false, right: false };
+  let carSpeed = 0;
+
+  // توليد 64 قطعة أرض منظمة حول الشوارع
+  const plotSpots = [];
+  [-80, -40, 0, 40, 80].forEach(x => {
+    [-80, -40, 0, 40, 80].forEach(z => {
+      if (Math.abs(x) < 25 && Math.abs(z) < 25) return;
+      plotSpots.push([x, z]);
+    });
+  });
+
+  function renderCitizens() {
+    while (citizensGroup.children.length > 0) {
+      citizensGroup.remove(citizensGroup.children[0]);
+    }
+    aiCars = [];
+
+    const listEl = document.getElementById('citizens-list');
+    listEl.innerHTML = '';
+    document.getElementById('citizen-count').innerText = `${citizensData.length} مواطن`;
+
+    citizensData.forEach((c, idx) => {
+      const isLocked = new Date(c.unlock_at) > new Date();
+      const spot = plotSpots[idx % plotSpots.length];
+
+      const item = document.createElement('div');
+      item.className = 'citizen-item';
+      const icon = isLocked ? '🎁' : (c.gift_type === 'villa' ? '🏡' : c.gift_type === 'tower' ? '🏙️' : '🏎️');
+      item.innerHTML = `<span><b>${c.username}</b></span><span>${icon}</span>`;
+      item.onclick = () => {
+        camera.position.set(spot[0] + 15, 14, spot[1] + 15);
+        controls.target.set(spot[0], 2, spot[1]);
+        document.getElementById('citizens-drawer').style.display = 'none';
+      };
+      listEl.appendChild(item);
+
+      if (isLocked) {
+        const mBox = createMysteryBoxModel(c.username);
+        mBox.position.set(spot[0], 0, spot[1]);
+        citizensGroup.add(mBox);
+      } else if (c.gift_type === 'villa') {
+        const villa = createVillaModel(c.username);
+        villa.position.set(spot[0], 0, spot[1]);
+        citizensGroup.add(villa);
+      } else if (c.gift_type === 'tower') {
+        const tower = createTowerModel(c.username);
+        tower.position.set(spot[0], 0, spot[1]);
+        citizensGroup.add(tower);
+      } else if (c.gift_type === 'supercar') {
+        const villa = createVillaModel(c.username);
+        villa.position.set(spot[0], 0, spot[1]);
+        citizensGroup.add(villa);
+
+        const car = createCarModel(c.username, 0xD4AF37);
+        const roadZ = [-60, -20, 20, 60][idx % 4];
+        car.position.set(-40 + (idx * 15) % 80, 0, roadZ);
+        car.rotation.y = Math.PI / 2;
+        citizensGroup.add(car);
+        aiCars.push({ mesh: car, dir: 1, speed: 0.22 });
+        if (myGiftData && c.username === myGiftData.username) playerCar = car;
+      }
+    });
+  }
+
+  function ensurePlayerCar(username = "زائر عشق") {
+    if (!playerCar) {
+      playerCar = createCarModel(username, 0x8B0023);
+      playerCar.position.set(0, 0, 20);
+      citizensGroup.add(playerCar);
+    }
+  }
+
+  // === التفاعل واستلام الهدية وحفظها في Supabase ===
+  let followed = false;
+  function markFollowed() { followed = true; }
+  function openGate() { document.getElementById('gate-modal').classList.remove('hidden'); }
+  function closeGate() { document.getElementById('gate-modal').classList.add('hidden'); }
+  function toggleCitizens() {
+    const d = document.getElementById('citizens-drawer');
+    d.style.display = (d.style.display === 'block') ? 'none' : 'block';
+  }
+
+  let myGiftData = null;
+  async function claimMysteryGift() {
+    const name = document.getElementById('username-input').value.trim();
+    if (!name) return alert("يرجى كتابة اسمك أو يوزرك أولاً!");
+    if (!followed) {
+      const ok = confirm("هل قمت بمتابعة حساب @i.askyouu على إنستغرام؟");
+      if (!ok) return;
+    }
+
+    const gifts = ['villa', 'supercar', 'tower'];
+    const randomGift = gifts[Math.floor(Math.random() * gifts.length)];
+    const unlockTime = new Date(Date.now() + 5 * 60 * 60 * 1000).toISOString();
+
+    myGiftData = { username: name, gift_type: randomGift, unlock_at: unlockTime };
+    localStorage.setItem('ask_my_gift', JSON.stringify(myGiftData));
+
+    // حفظ البيانات في قاعدة بيانات Supabase
+    const { error } = await supabaseClient.from('ask_citizens').upsert([myGiftData], { onConflict: 'username' });
+    if (error) console.error("Supabase Error:", error.message);
+
+    if (!citizensData.some(c => c.username === name)) {
+      citizensData.push(myGiftData);
+    }
+    renderCitizens();
+    closeGate();
+    startCountdown(unlockTime);
+  }
+
+  function startCountdown(unlockIso) {
+    const bar = document.getElementById('mystery-bar');
+    bar.style.display = 'flex';
+    const interval = setInterval(() => {
+      const diff = new Date(unlockIso) - new Date();
+      if (diff <= 0) {
+        clearInterval(interval);
+        bar.style.display = 'none';
+        renderCitizens();
+        return;
+      }
+      const h = String(Math.floor(diff / 3600000)).padStart(2, '0');
+      const m = String(Math.floor((diff % 3600000) / 60000)).padStart(2, '0');
+      const s = String(Math.floor((diff % 60000) / 1000)).padStart(2, '0');
+      document.getElementById('countdown').innerText = `${h}:${m}:${s}`;
+    }, 1000);
+  }
+
+  async function instantReveal() {
+    if (!myGiftData) return;
+    myGiftData.unlock_at = new Date(Date.now() - 1000).toISOString();
+    localStorage.setItem('ask_my_gift', JSON.stringify(myGiftData));
+    await supabaseClient.from('ask_citizens').upsert([myGiftData], { onConflict: 'username' });
+
+    document.getElementById('mystery-bar').style.display = 'none';
+    const idx = citizensData.findIndex(c => c.username === myGiftData.username);
+    if (idx !== -1) citizensData[idx] = myGiftData;
+
+    renderCitizens();
+    openStoryCard();
+  }
+
+  function openStoryCard() {
+    const modal = document.getElementById('story-modal');
+    if (!myGiftData) return openGate();
+    const isLocked = new Date(myGiftData.unlock_at) > new Date();
+    document.getElementById('story-username').innerText = myGiftData.username;
+
+    if (isLocked) {
+      document.getElementById('story-gift-icon').innerText = "🎁";
+      document.getElementById('story-gift-desc').innerText = "هدية غامضة قيد الكشف في مدينة عشق";
+    } else {
+      const map = {
+        villa: ["🏡", "حصل على فيلا ملكية باسمه في مدينة عشق!"],
+        tower: ["🏙️", "امتلك برجاً خاصاً باسمه في قلب مدينة عشق!"],
+        supercar: ["🏎️", "حصل على فيلا + سيارة رياضية يتجول بها في مدينة عشق!"]
+      };
+      document.getElementById('story-gift-icon').innerText = map[myGiftData.gift_type][0];
+      document.getElementById('story-gift-desc').innerText = map[myGiftData.gift_type][1];
+    }
+    modal.classList.remove('hidden');
+  }
+
+  // === وضع القيادة في المدينة ===
+  function toggleDriveMode() {
+    driveMode = !driveMode;
+    const btn = document.getElementById('btn-drive-mode');
+    const pad = document.getElementById('drive-controls');
+    if (driveMode) {
+      ensurePlayerCar(myGiftData ? myGiftData.username : "سائق عشق");
+      btn.classList.add('active');
+      btn.innerText = "❌ إنهاء";
+      pad.style.display = 'flex';
+      controls.enabled = false;
+    } else {
+      btn.classList.remove('active');
+      btn.innerText = "🚗 قيادة";
+      pad.style.display = 'none';
+      controls.enabled = true;
+    }
+  }
+
+  const bindBtn = (id, key) => {
+    const el = document.getElementById(id);
+    el.addEventListener('touchstart', (e) => { e.preventDefault(); keys[key] = true; });
+    el.addEventListener('touchend', () => { keys[key] = false; });
+    el.addEventListener('mousedown', () => { keys[key] = true; });
+    el.addEventListener('mouseup', () => { keys[key] = false; });
+  };
+  bindBtn('btn-up', 'up'); bindBtn('btn-down', 'down');
+  bindBtn('btn-left', 'left'); bindBtn('btn-right', 'right');
+
+  window.addEventListener('keydown', e => {
+    if (e.key === 'ArrowUp' || e.key === 'w') keys.up = true;
+    if (e.key === 'ArrowDown' || e.key === 's') keys.down = true;
+    if (e.key === 'ArrowLeft' || e.key === 'a') keys.left = true;
+    if (e.key === 'ArrowRight' || e.key === 'd') keys.right = true;
+  });
+  window.addEventListener('keyup', e => {
+    if (e.key === 'ArrowUp' || e.key === 'w') keys.up = false;
+    if (e.key === 'ArrowDown' || e.key === 's') keys.down = false;
+    if (e.key === 'ArrowLeft' || e.key === 'a') keys.left = false;
+    if (e.key === 'ArrowRight' || e.key === 'd') keys.right = false;
+  });
+
+  // === حلقة الحركة والتحديث ===
+  function animate() {
+    requestAnimationFrame(animate);
+
+    aiCars.forEach(item => {
+      if (driveMode && item.mesh === playerCar) return;
+      item.mesh.position.x += item.speed * item.dir;
+      if (item.mesh.position.x > 105) { item.dir = -1; item.mesh.rotation.y = -Math.PI / 2; }
+      if (item.mesh.position.x < -105) { item.dir = 1; item.mesh.rotation.y = Math.PI / 2; }
+    });
+
+    if (driveMode && playerCar) {
+      if (keys.up) carSpeed = Math.min(carSpeed + 0.03, 0.65);
+      else if (keys.down) carSpeed = Math.max(carSpeed - 0.03, -0.35);
+      else carSpeed *= 0.94;
+
+      if (Math.abs(carSpeed) > 0.01) {
+        if (keys.left) playerCar.rotation.y += 0.045 * Math.sign(carSpeed);
+        if (keys.right) playerCar.rotation.y -= 0.045 * Math.sign(carSpeed);
+      }
+
+      playerCar.position.x += Math.sin(playerCar.rotation.y) * carSpeed;
+      playerCar.position.z += Math.cos(playerCar.rotation.y) * carSpeed;
+
+      const camOffset = new THREE.Vector3(0, 6.5, -13).applyMatrix4(playerCar.matrixWorld);
+      camera.position.lerp(camOffset, 0.12);
+      camera.lookAt(playerCar.position.x, playerCar.position.y + 1.5, playerCar.position.z);
+    } else {
+      controls.update();
+    }
+
+    renderer.render(scene, camera);
+  }
+
+  // === تحميل البيانات من Supabase والاستماع للتحديثات الفورية ===
+  async function initWorld() {
+    const saved = localStorage.getItem('ask_my_gift');
+    if (saved) {
+      myGiftData = JSON.parse(saved);
+      citizensData.push(myGiftData);
+      closeGate();
+      if (new Date(myGiftData.unlock_at) > new Date()) startCountdown(myGiftData.unlock_at);
+    }
+
+    const { data } = await supabaseClient.from('ask_citizens').select('*').order('created_at', { ascending: true });
+    if (data && data.length) {
+      data.forEach(row => {
+        const idx = citizensData.findIndex(c => c.username === row.username);
+        if (idx === -1) citizensData.push(row);
+        else citizensData[idx] = row;
+      });
+    }
+
+    // تحديث فوري عند انضمام متابع جديد للمدينة
+    supabaseClient
+      .channel('public:ask_citizens')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'ask_citizens' }, payload => {
+        const newRow = payload.new;
+        if (!newRow) return;
+        const idx = citizensData.findIndex(c => c.username === newRow.username);
+        if (idx === -1) citizensData.push(newRow);
+        else citizensData[idx] = newRow;
+        renderCitizens();
+      })
+      .subscribe();
+
+    renderCitizens();
+    animate();
+  }
+
+  window.addEventListener('resize', () => {
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+  });
+
+  initWorld();
+</script>
+</body>
+</html>
